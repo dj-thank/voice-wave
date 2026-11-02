@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:4318/. Choose a state, level and layout. The component needs a parent with an explicit height; it fills its parent. Provide your own visible status text, as this example does.
+Open http://127.0.0.1:4328/. Choose a state, level and layout. The component needs a parent with an explicit height; it fills its parent. Provide your own visible status text, as this example does.
 
 To test a local checkout before release, run these from the repository root:
 

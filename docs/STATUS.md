@@ -38,7 +38,11 @@ The redistributable-fixture run detected all five speech conditions; the three 5
 - A real 23 KB package archive was installed into an independent consumer: TypeScript Bundler and NodeNext checks, Vite build and server rendering passed. The browser consumer rendered the user speaking state without microphone acquisition. Vite reports a non-failing warning about the library's `use client` directive; client-side and SSR smoke checks passed, but no Next.js integration is claimed.
 - Browser: both synthetic signals were simultaneously active; inner/outer assignment and both composite layouts could be selected. Following visual feedback, the detached ring and black center mask were removed. The radial marks now overlap the Wave's inner contour and share its speaking color; per-channel activity remains independent.
 - Browser keyboard interaction: expanded settings, changed layout and enabled reduced motion and explicit non-WebGL rendering. DOM confirmed the canvas hidden and the fallback active. Actual GPU context loss/recovery was not induced.
-- Hosted publication/readback is pending. The responsive viewport override was unavailable in this browser session; mobile layout/device acceptance remains unverified.
+- Public GitHub repository and GitHub Pages demo are live. Anonymous repository/API and demo reads returned HTTP 200. The initial clean Linux CI build, 19 tests, package-consumer validation and Pages deployment succeeded: [run 41415352854](https://github.com/dj-thank/voice-wave/actions/runs/41415352854).
+- [Release v0.1.0](https://github.com/dj-thank/voice-wave/releases/tag/v0.1.0) contains the renderer tarball and SHA-256 checksum. A separate consumer installed the actual public Release URL and passed TypeScript/Vite build.
+- The hosted demo loaded same-origin audio/model assets and reported speech detected → silence recovery → idle for the redistributable Japanese sample. No console errors/warnings were observed in that run.
+- Production microphone acquisition stayed in the preparing state in the test browser; app-level permission controls were unavailable to automation. The request was canceled and the UI returned to microphone-off. Actual hosted microphone capture is not claimed as verified; users must allow microphone access and test their device.
+- Responsive viewport override was unavailable in this browser session; mobile layout/device acceptance remains unverified.
 
 ## Remaining boundaries
 

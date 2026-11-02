@@ -84,7 +84,7 @@ function App() {
           <div className="primary-controls">
             {!running ? <button className="primary" onClick={startMic}><Icon type="mic"/>マイクを開始<Icon type="arrow"/></button>
               : <div className="active-actions"><button className="primary stop" onClick={stop}><Icon type="stop"/>{loading ? 'キャンセル' : '終了'}</button><button className="secondary mute" disabled={loading || sample} onClick={() => void mic.toggleMute()}><Icon type={mic.status === 'muted' ? 'mic' : 'mute'}/>{mic.status === 'muted' ? '再開' : 'ミュート'}</button></div>}
-            <p className="control-note">{loading ? '初回は音声判定の準備に数秒かかります。' : '音声はこのブラウザ内で処理します。録音・送信なし。'}</p>
+            <p className="control-note">{loading ? (sample ? '初回は音声判定の準備に時間がかかります。' : 'マイクの許可を確認してください。初回は音声判定の準備にも時間がかかります。') : '音声はこのブラウザ内で処理します。録音・送信なし。'}</p>
           </div>
           {mic.error && <div className="error" role="alert">{mic.error}</div>}
           <div className="state-key" aria-label="入出力の状態"><span data-active={mode === 'waiting'}><i className="green"/>待機</span><span data-active={talking}><i className="red"/>{talking ? '● あなた' : 'あなた'}</span><span data-active={agentVoice.status !== 'idle'}><i className="blue"/>{agentVoice.status === 'speaking' ? '▶ エージェント' : agentVoice.status === 'thinking' ? '… エージェント' : 'エージェント'}</span></div>
