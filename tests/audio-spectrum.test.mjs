@@ -40,7 +40,7 @@ test('stopping thinking cancels the pending voice and rejects late callbacks', a
   complete({ dispose: async () => { disposals++; } });
   await start;
   assert.equal(disposals, 1);
-  assert.deepEqual(controller.getSnapshot(), { status: 'idle', level: 0, bands: [0, 0, 0], error: null });
+  assert.deepEqual(controller.getSnapshot(), { status: 'idle', audible: false, level: 0, bands: [0, 0, 0], error: null });
 });
 test('sample playback updates envelopes and resets when ended', async () => {
   let callbacks;

@@ -1,31 +1,20 @@
-# v0.1.0 release notes
+# Voice Wave v0.2.0
 
-Voice Wave provides an audio-reactive React component and a microphone demo. User speech turns recording-red; silence settles into a calm green orb. Agent sample output is blue-violet and follows the actual playback signal.
+Waiting is fluid again, and simultaneous input/output has its own red-and-blue state on one Wave.
 
-## Included
+- Restore the earlier organic waiting shape; use a softer mint-green palette.
+- Add `idleMotion` (default `true`) independently from global reduced motion. Turning it off only stops waiting animation.
+- Keep user speech recording-red. Agent speech and thinking now share blue/cyan; thinking pulses.
+- Add `mode="overlap"` and automatic overlap in `VoiceConversation`, combining both measured visual envelopes without clipping. A localized shader treatment shows both colors on the same surface.
+- Distinguish audible output from playback lifecycle, so silent portions are not counted as continuing agent activity after the short release interval.
+- Add a fifth preview state and update the minimal React example and documentation.
 
-- Pipecat-derived Wave renderer with explicit speech state and measured audio features.
-- Wave-only and LiveKit-derived radial composite layouts, including input/output assignment reversal.
-- A renderer-only React package with TypeScript declarations and a standalone consumer example.
-- Browser-local Silero v6/v5 demo, microphone start/stop/mute, labelled sample modes and reduced motion.
-- Collapsed diagnostics with bounded in-memory metadata and explicit JSON export.
-- Source attribution, licenses, English/Japanese instructions and reproducible checks.
+The main demo remains a single Wave. Existing experimental layout props remain available for compatibility. Color choices are semantic; user speech remains fixed red.
 
-The default presentation remains Wave alone. Composite layouts are available for comparing independently active user/agent signals. No AI provider account or API key is required.
+## Verification
 
-## Distribution
+22 tests, production build, actual tarball installation in an independent consumer, TypeScript Bundler/NodeNext checks, Vite and SSR smoke passed. Browser checks covered waiting motion off/on, thinking and speech while waiting motion is off, real bundled sample overlap transitions, fallback colors, and narrow layout. See [verification record](https://github.com/dj-thank/voice-wave/blob/main/docs/STATUS.md) for details.
 
-The package is distributed as `dj-thank-voice-wave-0.1.0.tgz` on the GitHub Release. It is not an npm registry publication. GitHub Pages serves the interactive demo; all audio runtime assets are same-origin. Consult [STATUS](STATUS.md) for the actual publication and validation state.
+The package is distributed as `dj-thank-voice-wave-0.2.0.tgz` on this GitHub Release; it is not an npm registry publication. The demo runs audio processing locally and serves runtime assets from the same origin.
 
-## Verification boundaries
-
-Automated tests and fixed synthetic audio establish lifecycle behavior, renderer packaging and detector wiring, not natural Japanese recognition accuracy. A sample replay is distinct from real microphone capture. The visual speech gate is not semantic turn detection or a phoneme recognizer.
-
-Before extending support claims, verify:
-
-- Real microphone permissions, stop/mute/restart and capture-device disconnection on the target browser.
-- Normal speech, quiet speech, short responses, background sounds, speaker echo and simultaneous talk on the actual device.
-- Keyboard navigation, reduced motion, screen-reader status and the non-WebGL fallback.
-- Layout at narrow widths, off-screen/background behavior, device-specific frame rate and energy use.
-
-No ASR, live LLM conversation, speech synthesis service, speaker identification or cloud audio upload is included. The agent is a labelled bundled sample. Mobile/Safari real-device compatibility and end-to-end p50/p95 latency remain unmeasured unless explicitly recorded in STATUS.
+Real microphone/noise acceptance, mobile/Safari hardware, latency and power measurements remain open. Output activity is not a speech-recognition model or a judgment about conversational interruption. The agent is a labelled sample, with no live LLM, cloud TTS, ASR, phoneme recognition or audio upload.

@@ -5,7 +5,7 @@ This file distinguishes implementation, automated checks, browser observations a
 ## Implemented
 
 - Browser-local microphone capture with explicit start, stop, mute, cancellation and permission-error handling.
-- Pipecat Wave shader with fixed recording-red speech, round green waiting, pulsing thinking and blue-violet agent output. Measured audio energy and low/mid/high bands drive the shape; no phoneme recognition is performed.
+- Pipecat Wave shader with recording-red user speech, organic mint-green waiting, blue/cyan agent output and same-color thinking, plus red/blue simultaneous activity. Measured audio energy and low/mid/high bands drive the shape; no phoneme recognition is performed.
 - A clean central stage with screen-reader state updates. Detailed state and input/output metrics are in collapsed diagnostics: up to 900 in-memory entries, numerical values at up to 4 Hz, immediate state changes, explicit JSON export, pause and clear. No raw audio, device identifiers or transcripts are logged.
 - A consecutive-evidence visual speech gate: 3 frames at probability >= .55, or 2 at >= .85, starts speech; 10 frames below .35 return to idle. These are 32 ms model frames, not end-to-end latency measurements. This gate does not determine semantic turn endings.
 - The main playground uses one original Pipecat Wave. Color distinguishes user speech, agent speech and idle; thinking retains its pulse. The rejected inner/outer comparison is removed from the demo. Its previously published component props remain available for API compatibility; see `docs/LAYOUTS.md`.
@@ -54,6 +54,16 @@ The redistributable-fixture run detected all five speech conditions; the three 5
 - Browser: optional simple rendering hid the WebGL canvas; reduced motion could be selected. Both options were reset to their default off state afterward. No console warnings/errors were observed in the focused sample run.
 - Responsive viewport checks passed at 320 × 740, 390 × 844 and 1280 × 720: no horizontal page overflow; narrow toolbar labels wrap; the desktop start/stop buttons fit within the first viewport. These are browser viewport checks, not real mobile/Safari hardware acceptance. This supersedes the earlier session's unavailable viewport override.
 - Real microphone hardware, acoustic noise and cloud/LLM conversation are not newly validated by this UI pass. The limits below remain applicable.
+
+## Organic waiting and overlap — v0.2.0
+
+- Compared the original local waiting controller with its later calm-form adjustment. Restored the earlier/upstream silent shape parameters (pace 2.8, scale .22, frequency .35, amplitude .35, variance .06, fill .4, core .1, depth .22). Waiting is softly mint green; speech retains the measured modulation. The previous public versions remain in Git/Release history.
+- Added `idleMotion` (default true) to both renderer components and a dedicated waiting-motion switch. Off freezes waiting after transitions settle; speech and thinking continue. Global reduced motion takes precedence. Browser image comparisons confirmed identical waiting frames when off, changed frames after re-enabling, and changed thinking/agent frames while waiting motion was off.
+- Agent output and thinking now use the same blue/cyan palette. Thinking remains a brightness pulse. Simultaneous activity is `overlap`: red and blue share one organic surface, with no inner/outer ring. The original attributed shader body stays intact; a small color patch applies the spatial two-color treatment.
+- Both active levels and bands contribute through bounded `1 - (1-a)(1-b)` visual envelopes. A quiet participant does not contribute. The output controller separates playback lifecycle from audible activity: .025 onset, below .012 for 180 continuous milliseconds to release, with hysteresis in between. This is an output-energy gate, not VAD, ASR, or a detector of interruption intent; echo can still produce apparent overlap.
+- Five labelled preview states, the explicit fallback, keyboard controls, and 320 × 844 / 1280 × 720 layouts were exercised. The narrow layout had no horizontal overflow and all state buttons had 40px height. The fallback displayed both colors; its default remains off.
+- 22 tests passed, including simultaneous signal contribution, one participant ending, quiet playback, lifecycle resets and stale callbacks. TypeScript/production build passed. The real v0.2.0 archive passed installation into an independent consumer, Bundler/NodeNext type checks, Vite build and server rendering. A missing extension in an emitted type import was caught by that check and fixed before packaging passed. The known non-failing `use client` bundler warning remains; no Next.js acceptance is claimed.
+- The two actual bundled sample signals produced agent → overlap → user → waiting transitions. Exported diagnostics contained 11 overlap entries, and the Japanese sample reported speech detected → silence restored. These are synthetic fixture checks, not real microphone or conversational-interruption acceptance. No console warnings/errors were observed in the sample check.
 
 ## Remaining boundaries
 

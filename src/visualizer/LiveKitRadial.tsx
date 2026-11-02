@@ -26,7 +26,7 @@ export function LiveKitRadial({ channel, mode, inner = false, reducedMotion = fa
   const distanceFromCenter = inner ? 58 : 68;
   const dotSize = distanceFromCenter * Math.PI / barCount * 0.32;
   const active = channel.speaking;
-  const color = mode === 'user' ? '#ff0000' : mode === 'agent' ? '#146bff' : '#04f238';
+  const color = mode === 'user' || mode === 'overlap' ? '#ff0000' : mode === 'agent' || mode === 'thinking' ? '#146bff' : '#36b887';
   const bands = channel.bands ?? [channel.level, channel.level, channel.level];
   return <svg viewBox="0 0 300 300" aria-hidden="true" data-radial-mode={mode}
     data-radial-adapter="livekit" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}>

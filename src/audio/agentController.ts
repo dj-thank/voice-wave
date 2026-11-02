@@ -1,6 +1,8 @@
 import type { AudioBands } from './spectrum';
 export interface AgentVoiceState {
   status: 'idle' | 'thinking' | 'speaking';
+  /** Activity in the known playback signal; not speech recognition or microphone VAD. */
+  audible: boolean;
   level: number;
   bands: AudioBands;
   error: string | null;
@@ -10,7 +12,7 @@ export type AgentVoiceFactory = (url: string, callbacks: {
   frame: (level: number, bands: AudioBands) => void;
   ended: () => void;
 }, signal: AbortSignal) => Promise<{ dispose: () => Promise<void> }>;
-const initial: AgentVoiceState = { status: 'idle', level: 0, bands: [0, 0, 0], error: null };
+const initial: AgentVoiceState = { status: 'idle', audible: false, level: 0, bands: [0, 0, 0], error: null };
 
 export class AgentVoiceController {
   private state = { ...initial };
@@ -19,7 +21,8 @@ export class AgentVoiceController {
   private abort: AbortController | null = null;
   private session: { dispose: () => Promise<void> } | null = null;
   private factory: AgentVoiceFactory;
-  constructor(factory: AgentVoiceFactory) { this.factory = factory; }
+  private now: () => number;
+  constructor(factory: AgentVoiceFactory, now: () => number = () => performance.now()) { this.factory = factory; this.now = now; }
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private publish(patch: Partial<AgentVoiceState>) {
@@ -35,10 +38,28 @@ export class AgentVoiceController {
     this.abort = abort;
     this.publish({ ...initial, status: 'thinking' });
     const valid = () => this.generation === id && !abort.signal.aborted;
+    let quietSince: number | null = null;
     try {
       const pending = this.factory(url, {
         playing: () => { if (valid()) this.publish({ status: 'speaking' }); },
-        frame: (level, bands) => { if (valid()) this.publish({ level, bands }); },
+        frame: (level, bands) => {
+          if (!valid()) return;
+          let audible = this.state.audible;
+          if (this.state.status !== 'speaking') {
+            audible = false; quietSince = null;
+          } else if (level >= 0.025) {
+            audible = true; quietSince = null;
+          } else if (level <= 0.012) {
+            // Require continuous quiet, rather than time since the last loud frame.
+            const time = this.now();
+            quietSince ??= time;
+            if (time - quietSince >= 180) audible = false;
+          } else {
+            // The hysteresis band preserves activity and breaks a quiet interval.
+            quietSince = null;
+          }
+          this.publish({ level, bands, audible });
+        },
         ended: () => { if (valid()) void this.stop(); },
       }, abort.signal);
       if (oldSession) void oldSession.dispose();

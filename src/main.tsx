@@ -6,7 +6,7 @@ import { useAgentVoice } from './audio/useAgentVoice';
 import { Diagnostics } from './diagnostics/Diagnostics';
 import './style.css';
 
-type PreviewState = 'waiting' | 'user' | 'thinking' | 'agent';
+type PreviewState = 'waiting' | 'user' | 'thinking' | 'agent' | 'overlap';
 type IconName = 'mic' | 'stop' | 'mute' | 'play' | 'arrow' | 'external' | 'headphones' | 'layers' | 'lock' | 'chevron' | 'wave';
 function Icon({ type, size = 18 }: { type: IconName; size?: number }) {
   return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -24,9 +24,10 @@ function Icon({ type, size = 18 }: { type: IconName; size?: number }) {
   </svg>;
 }
 
-const PREVIEW_STATES: { value: PreviewState; label: string }[] = [
+const PREVIEW_STATES: { value: PreviewState; label: string; accessibleLabel?: string }[] = [
   { value: 'waiting', label: '待機' }, { value: 'user', label: 'あなた' },
-  { value: 'thinking', label: '思考' }, { value: 'agent', label: 'エージェント' },
+  { value: 'agent', label: 'エージェント' }, { value: 'overlap', label: '同時', accessibleLabel: '同時発話' },
+  { value: 'thinking', label: '思考' },
 ];
 function App() {
   const [vadModel, setVadModel] = useState<'v5' | 'v6'>('v6');
@@ -35,6 +36,8 @@ function App() {
   const [preview, setPreview] = useState(false);
   const [previewState, setPreviewState] = useState<PreviewState>('user');
   const [previewLevel, setPreviewLevel] = useState(0);
+  const [previewAgentLevel, setPreviewAgentLevel] = useState(0);
+  const [idleMotion, setIdleMotion] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [simpleRenderer, setSimpleRenderer] = useState(false);
   const [rendererError, setRendererError] = useState<string | null>(null);
@@ -42,11 +45,12 @@ function App() {
   const [observations, setObservations] = useState({ speech: false, silence: false });
 
   useEffect(() => {
-    if (!preview || previewState === 'waiting' || previewState === 'thinking') { setPreviewLevel(0); return; }
+    if (!preview || previewState === 'waiting' || previewState === 'thinking') { setPreviewLevel(0); setPreviewAgentLevel(0); return; }
     let frame = 0; const start = performance.now();
     const tick = (now: number) => {
       const t = (now - start) / 1000;
       setPreviewLevel(0.25 + 0.3 * Math.abs(Math.sin(t * 5.5)) + 0.18 * Math.abs(Math.sin(t * 12)));
+      setPreviewAgentLevel(0.22 + 0.28 * Math.abs(Math.sin(t * 3.6 + .7)) + 0.16 * Math.abs(Math.sin(t * 8.2)));
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
@@ -77,22 +81,27 @@ function App() {
   const sample = mic.source === 'sample';
   const agentActive = agentVoice.status !== 'idle';
   const anythingActive = running || agentActive || preview;
-  const talking = preview ? previewState === 'user' : mic.speaking;
-  const agentTalking = preview ? previewState === 'agent' : agentVoice.status === 'speaking';
+  const talking = preview ? previewState === 'user' || previewState === 'overlap' : mic.speaking;
+  const agentTalking = preview ? previewState === 'agent' || previewState === 'overlap' : agentVoice.audible;
   const thinking = preview ? previewState === 'thinking' : agentVoice.status === 'thinking';
-  const mode = talking ? 'user' : thinking ? 'thinking' : agentTalking ? 'agent' : 'waiting';
+  const overlapping = talking && agentTalking;
+  const mode = overlapping ? 'overlap' : talking ? 'user' : agentTalking ? 'agent' : thinking ? 'thinking' : 'waiting';
   const previewBands: [number, number, number] = [previewLevel * .8, previewLevel, previewLevel * .6];
-  const status = preview ? `${PREVIEW_STATES.find(item => item.value === previewState)!.label}のプレビュー（模擬）`
+  const previewAgentBands: [number, number, number] = [previewAgentLevel * .55, previewAgentLevel * .8, previewAgentLevel];
+  const status = preview ? `${PREVIEW_STATES.find(item => item.value === previewState)!.accessibleLabel ?? PREVIEW_STATES.find(item => item.value === previewState)!.label}のプレビュー（模擬）`
     : loading ? '音声の準備中'
+    : overlapping ? (sample ? '入力とエージェントのサンプルが同時に発話中' : 'あなたとエージェントが同時に発話中')
     : mic.status === 'speaking' ? (sample ? 'サンプルの発話を検出' : 'あなたの声を検出')
     : thinking ? 'エージェントが考えています（デモ）'
     : agentTalking ? 'エージェント音声を再生中（サンプル）'
+    : agentActive ? 'エージェントのサンプルを再生中（無音区間）'
     : mic.status === 'muted' ? 'ミュート中'
     : mic.status === 'listening' ? (sample ? 'サンプルの無音を検出' : 'あなたの声を待っています')
     : mic.status === 'error' ? 'マイクを確認してください' : 'マイクはオフです';
-  const stageBadge = preview ? '模擬プレビュー' : sample ? 'サンプル解析' : loading ? '準備中' : mic.status === 'muted' ? 'ミュート' : running ? 'マイク接続中' : agentActive ? 'サンプル再生' : 'READY';
+  const stageBadge = preview ? '模擬プレビュー' : overlapping ? '同時発話' : sample ? 'サンプル解析' : loading ? '準備中' : mic.status === 'muted' ? 'ミュート' : running ? 'マイク接続中' : agentActive ? 'サンプル再生' : 'READY';
   const dockNote = preview ? '状態を選んで動きを確認できます。音声は使いません。'
     : loading ? (sample ? '音声判定を準備しています。初回は少し時間がかかります。' : 'ブラウザのマイク許可を確認してください。初回は準備に時間がかかります。')
+    : overlapping ? (sample ? '二つのサンプルが同時に発話中。赤と青がひとつのWaveに重なります。' : 'あなたとエージェントが同時に発話中。赤と青がひとつのWaveに重なります。')
     : sample ? '日本語サンプルを解析しています。マイクは使用していません。'
     : mic.status === 'muted' ? 'マイクはミュート中です。再開すると新しく接続します。'
     : running ? '話すと赤く、黙ると緑へ。声の強さや響きに反応します。'
@@ -101,7 +110,7 @@ function App() {
 
   return <div className="app" data-mode={mode}>
     <header className="app-header">
-      <a href={import.meta.env.BASE_URL} className="brand" aria-label="Voice Wave ホーム"><span className="brand-icon"><Icon type="wave" size={20}/></span><span>Voice Wave</span><span className="brand-version">0.1</span></a>
+      <a href={import.meta.env.BASE_URL} className="brand" aria-label="Voice Wave ホーム"><span className="brand-icon"><Icon type="wave" size={20}/></span><span>Voice Wave</span><span className="brand-version">0.2</span></a>
       <nav className="header-nav" aria-label="メインナビゲーション"><span className="nav-current">Playground</span><a href="https://github.com/dj-thank/voice-wave/blob/main/README.ja.md" target="_blank" rel="noreferrer">ガイド<Icon type="external" size={13}/></a><a href="https://github.com/dj-thank/voice-wave" target="_blank" rel="noreferrer">GitHub<Icon type="external" size={13}/></a></nav>
     </header>
 
@@ -112,10 +121,10 @@ function App() {
         <section className="preview-panel" aria-label="音声に反応するWaveデモ">
           <div className="preview-toolbar"><div className="mode-switch" role="group" aria-label="操作モード"><button aria-pressed={!preview} onClick={() => selectPreview(false)}><Icon type="mic" size={15}/>音声入力</button><button aria-pressed={preview} onClick={() => selectPreview(true)}><Icon type="play" size={15}/>見た目をプレビュー</button></div><span className={`session-badge ${anythingActive ? 'is-active' : ''}`}><i/>{stageBadge}</span></div>
           <div className={`stage-view ${preview ? 'has-preview' : ''}`}>
-            <div className="orb-wrap"><VoiceConversation input={{level:preview ? (talking ? previewLevel : 0) : mic.level,speaking:talking,bands:preview ? previewBands : mic.bands}} output={{level:preview ? (agentTalking ? previewLevel : 0) : agentVoice.level,speaking:agentTalking,thinking,bands:preview ? previewBands : agentVoice.bands}} layout="wave" renderer={simpleRenderer ? 'fallback' : 'auto'} reducedMotion={reduceMotion} onError={setRendererError}/></div>
+            <div className="orb-wrap"><VoiceConversation input={{level:preview ? (talking ? previewLevel : 0) : mic.level,speaking:talking,bands:preview ? previewBands : mic.bands}} output={{level:preview ? (agentTalking ? previewAgentLevel : 0) : agentVoice.level,speaking:agentTalking,thinking,bands:preview ? previewAgentBands : agentVoice.bands}} layout="wave" idleMotion={idleMotion} renderer={simpleRenderer ? 'fallback' : 'auto'} reducedMotion={reduceMotion} onError={setRendererError}/></div>
             <span className="sr-only" role="status" aria-live="polite">{status}</span>
-            {preview ? <div className="preview-state-buttons" role="group" aria-label="プレビュー状態">{PREVIEW_STATES.map(item => <button key={item.value} aria-pressed={previewState === item.value} data-state={item.value} onClick={() => setPreviewState(item.value)}><i/>{item.label}</button>)}</div>
-              : <div className="participant-key" aria-label="入出力の状態"><span data-active={talking}><i className="user-dot"/>あなた{talking && <span className="activity-mark" aria-label="発話中">•••</span>}</span><span data-active={agentActive}><i className="agent-dot"/>エージェント{agentActive && <span className="activity-mark" aria-label={thinking ? '思考中' : '再生中'}>{thinking ? '…' : '•••'}</span>}</span></div>}
+            {preview ? <div className="preview-state-buttons" role="group" aria-label="プレビュー状態">{PREVIEW_STATES.map(item => <button key={item.value} aria-label={item.accessibleLabel} aria-pressed={previewState === item.value} data-state={item.value} onClick={() => setPreviewState(item.value)}><i/>{item.label}</button>)}</div>
+              : <div className="participant-key" aria-label={overlapping ? '入出力の状態：同時発話' : '入出力の状態'}><span data-active={talking}><i className="user-dot"/>あなた{talking && <span className="activity-mark" aria-label="発話中">•••</span>}</span><span data-active={agentTalking || thinking}><i className="agent-dot"/>エージェント{(agentTalking || thinking) && <span className="activity-mark" aria-label={thinking ? '思考中' : '再生中'}>{thinking ? '…' : '•••'}</span>}</span></div>}
           </div>
           <div className="call-dock">
             <div className="call-actions">
@@ -139,6 +148,8 @@ function App() {
           </section>
 
           <section className="inspector-section appearance-section"><div className="section-heading"><h2>表示設定</h2><span>APPEARANCE</span></div>
+            <label className="switch-row"><span>待機中も動かす</span><input type="checkbox" checked={idleMotion} onChange={e => setIdleMotion(e.target.checked)}/><span className="switch-track" aria-hidden="true"/></label>
+            <p className="setting-hint">{reduceMotion ? '「動きを控えめに」がオンの間は、待機も静止します。' : '待機中だけ切り替えます。発話や思考の動きはそのまま。'}</p>
             <label className="switch-row"><span>動きを控えめに</span><input type="checkbox" checked={reduceMotion} onChange={e => setReduceMotion(e.target.checked)}/><span className="switch-track" aria-hidden="true"/></label>
           </section>
 
