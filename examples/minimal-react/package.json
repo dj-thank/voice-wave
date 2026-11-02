@@ -1,14 +1,14 @@
 {
   "name": "voice-wave-minimal-example",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4328 --strictPort",
     "build": "tsc --noEmit && vite build"
   },
   "dependencies": {
-    "@dj-thank/voice-wave": "https://github.com/dj-thank/voice-wave/releases/download/v0.2.0/dj-thank-voice-wave-0.2.0.tgz",
+    "@dj-thank/voice-wave": "https://github.com/dj-thank/voice-wave/releases/download/v0.3.0/dj-thank-voice-wave-0.3.0.tgz",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },

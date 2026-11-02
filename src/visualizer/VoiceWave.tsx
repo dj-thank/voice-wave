@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { VOICE_WAVE_FRAGMENT_BODY } from './voice-wave.frag';
 import type { VoiceMode } from './conversationState.js';
+import type { OverlapEntry } from './overlapState.js';
 
 /** Pipecat's actual Wave shader, with a standalone local-voice controller. */
 export interface VoiceWaveProps {
@@ -8,6 +9,8 @@ export interface VoiceWaveProps {
   /** Audio activity can be independent from the semantic palette selected by mode. */
   active?: boolean;
   mode?: VoiceMode;
+  /** Participant observed joining the other voice; only used for overlap. */
+  overlapEntry?: OverlapEntry;
   /** Real low/mid/high audio band energies, each normalized to 0–1. */
   bands?: [number, number, number];
   reducedMotion?: boolean;
@@ -47,19 +50,20 @@ const UNIFORMS = `
 uniform vec2 iResolution;
 uniform float uPhase, uSpan, uBlur, uScale, uFrequency, uAmplitude;
 uniform float uMix, uVariance, uSmoothing, uDensity, uFill, uCore;
-uniform float uHollow, uDepth, uHighlight, uHueDrift, uColorShift, uMode, uOverlap;
-uniform vec3 uColor, uColorHsv, uHsvDelta, uHighlightColor, uSecondaryColor;
+uniform float uHollow, uDepth, uHighlight, uHueDrift, uColorShift, uMode, uOverlap, uOverlapEntry, uOverlapProgress;
+uniform vec3 uColor, uColorHsv, uHsvDelta, uHighlightColor, uUserColor, uAgentColor;
 `;
 const VERTEX = 'attribute vec2 aPosition; void main() { gl_Position = vec4(aPosition, 0.0, 1.0); }';
 const MAIN = '\nvoid main() { vec4 c = vec4(0.0); mainImage(c, gl_FragCoord.xy); gl_FragColor = c; }';
 
-export function VoiceWave({ level, active, mode, bands, reducedMotion = false, idleMotion = true, renderer = 'auto', className, style, onError }: VoiceWaveProps) {
+export function VoiceWave({ level, active, mode, bands, overlapEntry = 'simultaneous', reducedMotion = false, idleMotion = true, renderer = 'auto', className, style, onError }: VoiceWaveProps) {
   const resolvedMode = mode ?? (active ? 'user' : 'waiting');
   const signalActive = active ?? (resolvedMode === 'user' || resolvedMode === 'agent' || resolvedMode === 'overlap');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fallbackRef = useRef<HTMLDivElement>(null);
-  const props = useRef({ level, mode: resolvedMode, active: signalActive, bands, reducedMotion, idleMotion, onError });
-  props.current = { level, mode: resolvedMode, active: signalActive, bands, reducedMotion, idleMotion, onError };
+  const fallbackOverlapRef = useRef<HTMLDivElement>(null);
+  const props = useRef({ level, mode: resolvedMode, active: signalActive, bands, overlapEntry, reducedMotion, idleMotion, onError });
+  props.current = { level, mode: resolvedMode, active: signalActive, bands, overlapEntry, reducedMotion, idleMotion, onError };
   const drawRef = useRef<(() => void) | null>(null);
   const [failed, setFailed] = useState(false);
   const [contextGeneration, setContextGeneration] = useState(0);
@@ -83,6 +87,9 @@ export function VoiceWave({ level, active, mode, bands, reducedMotion = false, i
     let bandLevels: RGB = [0, 0, 0];
     let thinkingBlend = 0;
     let overlapBlend = 0;
+    let overlapProgress = 1;
+    let wasOverlapping = false;
+    let lastOverlapEntry: OverlapEntry = 'simultaneous';
     let thinkingPhase = 0;
     let gl: WebGLRenderingContext | null = null;
     let program: WebGLProgram | null = null;
@@ -168,11 +175,20 @@ export function VoiceWave({ level, active, mode, bands, reducedMotion = false, i
       speechBlend += ((speaking ? 1 : 0) - speechBlend) * (1 - Math.exp(-delta / (speaking ? 0.10 : 0.38)));
       const thinking = config.mode === 'thinking';
       const overlap = config.mode === 'overlap';
+      if (overlap) {
+        if (!wasOverlapping || lastOverlapEntry !== config.overlapEntry) overlapProgress = 0;
+        lastOverlapEntry = config.overlapEntry;
+        overlapProgress = config.reducedMotion || lastOverlapEntry === 'simultaneous'
+          ? 1 : Math.min(1, overlapProgress + delta / 0.85);
+      }
+      // A short overlap fades from its actual position, not a completed split.
+      wasOverlapping = overlap;
+      const agentWasFirst = overlap && config.overlapEntry === 'user';
       overlapBlend += ((overlap ? 1 : 0) - overlapBlend) * (1 - Math.exp(-delta / 0.16));
       thinkingBlend += ((thinking ? 1 : 0) - thinkingBlend) * (1 - Math.exp(-delta / 0.25));
-      if (!config.reducedMotion) thinkingPhase += delta * Math.PI * 2;
-      const baseTarget = config.mode === 'user' || overlap ? USER_COLOR : config.mode === 'agent' || thinking ? AGENT_COLOR : WAITING_COLOR;
-      const accentTarget = config.mode === 'user' || overlap ? USER_ACCENT : config.mode === 'agent' || thinking ? AGENT_ACCENT : WAITING_ACCENT;
+      if (!config.reducedMotion) thinkingPhase += delta * Math.PI * 2 / 3;
+      const baseTarget = config.mode === 'user' || (overlap && !agentWasFirst) ? USER_COLOR : config.mode === 'agent' || thinking || agentWasFirst ? AGENT_COLOR : WAITING_COLOR;
+      const accentTarget = config.mode === 'user' || (overlap && !agentWasFirst) ? USER_ACCENT : config.mode === 'agent' || thinking || agentWasFirst ? AGENT_ACCENT : WAITING_ACCENT;
       const colorAlpha = 1 - Math.exp(-delta / (speaking ? 0.065 : 0.32));
       palette = mixColor(palette, baseTarget, colorAlpha);
       accentPalette = mixColor(accentPalette, accentTarget, colorAlpha);
@@ -186,9 +202,9 @@ export function VoiceWave({ level, active, mode, bands, reducedMotion = false, i
       graphics.uniform2f(uniform('iResolution'), width, height);
       const animate = !config.reducedMotion && (config.mode !== 'waiting' || config.idleMotion);
       const motion = animate ? 1 : 0;
-      // Restore the organic waiting form from 7730c07/upstream silent defaults.
-      // Speech retains its measured modulation and eased release.
-      const pace = mix(2.8, 8, speechBlend) + 48 * energy + 18 * mid;
+      // Keep a gently rounded, fluid waiting contour. Speech retains the
+      // original measured modulation and eased release.
+      const pace = mix(2.0, 8, speechBlend) + 48 * energy + 18 * mid;
       phase += delta * 0.05 * pace * motion;
       hueDrift = (hueDrift + delta * 0.0018 * pace * motion) % 1;
       // Reduced motion must settle into a deliberate form, not freeze the
@@ -196,19 +212,21 @@ export function VoiceWave({ level, active, mode, bands, reducedMotion = false, i
       scalar('uPhase', config.reducedMotion ? 0.7 : phase);
       scalar('uSpan', 1.02); // Upstream fit, preserving margin for full speech.
       scalar('uBlur', 0.2);
-      scalar('uScale', config.reducedMotion ? 0.235 : mix(0.22, 0.25, speechBlend) + 0.06 * pulse + 0.025 * low);
-      scalar('uFrequency', config.reducedMotion ? 0.23 : mix(0.35, 0.45, speechBlend) + 0.6 * mid + 0.4 * high);
-      scalar('uAmplitude', config.reducedMotion ? 0.055 : 0.35 + 0.5 * energy + 0.5 * mid);
-      scalar('uVariance', config.reducedMotion ? 0.014 : mix(0.06, 0.08, speechBlend) + 0.45 * mid + 0.25 * high);
-      // Thinking is a slow 1 Hz brightness pulse; reduced motion suppresses it.
-      const thoughtPulse = config.reducedMotion ? 1 : mix(1, 0.28 + 1.0 * (0.5 + 0.5 * Math.sin(thinkingPhase)), thinkingBlend);
+      scalar('uScale', config.reducedMotion ? 0.235 : mix(0.225, 0.25, speechBlend) + 0.06 * pulse + 0.025 * low);
+      scalar('uFrequency', config.reducedMotion ? 0.23 : mix(0.30, 0.45, speechBlend) + 0.6 * mid + 0.4 * high);
+      scalar('uAmplitude', config.reducedMotion ? 0.055 : mix(0.20, 0.35, speechBlend) + 0.5 * energy + 0.5 * mid);
+      scalar('uVariance', config.reducedMotion ? 0.014 : mix(0.035, 0.08, speechBlend) + 0.45 * mid + 0.25 * high);
+      // One thinking breath every three seconds; reduced motion suppresses it.
+      const thoughtPulse = config.reducedMotion ? 1 : mix(1, 0.62 + 0.5 * (0.5 + 0.5 * Math.sin(thinkingPhase)), thinkingBlend);
       scalar('uMix', (config.reducedMotion ? 1.2 : mix(1.15, 1.25, speechBlend) * (1 + 0.55 * energy + 0.35 * high)) * thoughtPulse);
       scalar('uSmoothing', 0.28); scalar('uDensity', 0.55); scalar('uFill', config.reducedMotion ? 0.5 : 0.4);
       scalar('uCore', config.reducedMotion ? 0.2 : 0.1); scalar('uHollow', 0.3); scalar('uDepth', config.reducedMotion ? 0.16 : 0.22);
       scalar('uHighlight', 0.16); scalar('uHueDrift', hueDrift);
       scalar('uColorShift', 0.05 * (1 + 1.6 * (config.reducedMotion ? 0 : energy)));
       scalar('uMode', 0); scalar('uOverlap', overlapBlend);
-      vector('uSecondaryColor', AGENT_COLOR);
+      scalar('uOverlapEntry', lastOverlapEntry === 'user' ? 1 : lastOverlapEntry === 'agent' ? -1 : 0);
+      scalar('uOverlapProgress', overlapProgress);
+      vector('uUserColor', USER_COLOR); vector('uAgentColor', AGENT_COLOR);
       vector('uColor', palette); vector('uColorHsv', baseHsv);
       vector('uHsvDelta', [hueDifference, accentHsv[1] - baseHsv[1], accentHsv[2] - baseHsv[2]]);
       // Tint the shine with the palette: no white highlight that turns recording red pink.
@@ -253,7 +271,7 @@ export function VoiceWave({ level, active, mode, bands, reducedMotion = false, i
     };
   }, [contextGeneration, renderer]);
 
-  useEffect(() => { drawRef.current?.(); }, [level, active, resolvedMode, bands, reducedMotion, idleMotion]);
+  useEffect(() => { drawRef.current?.(); }, [level, active, resolvedMode, bands, overlapEntry, reducedMotion, idleMotion]);
 
   const fallback = renderer === 'fallback' || failed;
   useEffect(() => {
@@ -262,19 +280,31 @@ export function VoiceWave({ level, active, mode, bands, reducedMotion = false, i
     const thinking = resolvedMode === 'thinking';
     if (!thinking && (resolvedMode !== 'waiting' || !idleMotion)) return;
     const animation = node.animate(thinking
-      ? [{ opacity: 0.4 }, { opacity: 0.95 }, { opacity: 0.4 }]
+      ? [{ opacity: 0.55 }, { opacity: 0.95 }, { opacity: 0.55 }]
       : [{ borderRadius: '46% 54% 52% 48%' }, { borderRadius: '54% 46% 45% 55%' }, { borderRadius: '46% 54% 52% 48%' }],
-    { duration: thinking ? 1500 : 5500, iterations: Infinity, easing: 'ease-in-out' });
+    { duration: thinking ? 3000 : 5500, iterations: Infinity, easing: 'ease-in-out' });
     return () => animation.cancel();
   }, [fallback, resolvedMode, idleMotion, reducedMotion]);
+  useEffect(() => {
+    const node = fallbackOverlapRef.current;
+    if (!fallback || !node || resolvedMode !== 'overlap' || reducedMotion || overlapEntry === 'simultaneous') return;
+    const animation = node.animate([
+      { clipPath: overlapEntry === 'user' ? 'inset(0 100% 0 0)' : 'inset(0 0 0 100%)' },
+      { clipPath: 'inset(0 0 0 0)' },
+    ], { duration: 850, easing: 'ease-in-out', fill: 'both' });
+    return () => animation.cancel();
+  }, [fallback, resolvedMode, overlapEntry, reducedMotion]);
   const fallbackActivity = signalActive && (resolvedMode === 'user' || resolvedMode === 'agent' || resolvedMode === 'overlap') ? clamp(level) : 0;
-  return <div className={className} data-wave-state={signalActive ? 'speaking' : resolvedMode === 'thinking' ? 'thinking' : 'calm'} data-wave-mode={resolvedMode} data-wave-active={signalActive} data-idle-motion={idleMotion} data-wave-renderer={fallback ? 'fallback' : 'webgl'} style={{ width: '100%', height: '100%', position: 'relative', ...style }}>
+  return <div className={className} data-wave-state={signalActive ? 'speaking' : resolvedMode === 'thinking' ? 'thinking' : 'calm'} data-wave-mode={resolvedMode} data-wave-active={signalActive} data-wave-overlap-entry={resolvedMode === 'overlap' ? overlapEntry : undefined} data-idle-motion={idleMotion} data-wave-renderer={fallback ? 'fallback' : 'webgl'} style={{ width: '100%', height: '100%', position: 'relative', ...style }}>
     <canvas ref={canvasRef} aria-hidden="true" style={{ width: '100%', height: '100%', display: fallback ? 'none' : 'block' }} />
     {fallback && <div ref={fallbackRef} aria-hidden="true" style={{ position: 'absolute', inset: '25%', borderRadius: '46% 54% 52% 48%',
       background: resolvedMode === 'overlap'
-        ? 'radial-gradient(ellipse at 25% 50%, #ff0000 0%, transparent 65%), radial-gradient(ellipse at 75% 50%, #146bff 0%, transparent 65%)'
+        ? `radial-gradient(ellipse, ${overlapEntry === 'user' ? '#146bff' : '#ff0000'} 0%, transparent 72%)`
         : `radial-gradient(circle at 35% 30%, ${resolvedMode === 'user' ? '#ff0000' : resolvedMode === 'agent' || resolvedMode === 'thinking' ? '#146bff' : '#29b875'} 0%, ${resolvedMode === 'user' ? '#b60000' : resolvedMode === 'agent' || resolvedMode === 'thinking' ? '#05b8ff' : '#147554'} 45%, transparent 72%)`,
-      opacity: 0.9, transform: reducedMotion ? undefined : `scale(${1 + fallbackActivity * 0.2})`, transition: reducedMotion ? undefined : 'transform 80ms linear' }} />}
+      opacity: 0.9, transform: reducedMotion ? undefined : `scale(${1 + fallbackActivity * 0.2})`, transition: reducedMotion ? undefined : 'transform 80ms linear' }}>
+      {resolvedMode === 'overlap' && <div ref={fallbackOverlapRef} style={{ position: 'absolute', inset: 0, borderRadius: 'inherit',
+        background: 'radial-gradient(ellipse at 25% 50%, #ff0000 0%, transparent 65%), radial-gradient(ellipse at 75% 50%, #146bff 0%, transparent 65%)' }} />}
+    </div>}
 
   </div>;
 }

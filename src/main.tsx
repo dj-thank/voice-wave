@@ -1,12 +1,15 @@
-import { StrictMode, useEffect, useState } from 'react';
+import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { VoiceConversation } from './visualizer/VoiceConversation';
+import { useOverlapEntry } from './visualizer/useOverlapEntry';
 import { useMicrophone } from './audio/useMicrophone';
 import { useAgentVoice } from './audio/useAgentVoice';
 import { Diagnostics } from './diagnostics/Diagnostics';
 import './style.css';
 
 type PreviewState = 'waiting' | 'user' | 'thinking' | 'agent' | 'overlap';
+type SequenceEntry = 'user' | 'agent';
+type SequencePhase = 'first' | 'overlap' | 'last' | 'complete';
 type IconName = 'mic' | 'stop' | 'mute' | 'play' | 'arrow' | 'external' | 'headphones' | 'layers' | 'lock' | 'chevron' | 'wave';
 function Icon({ type, size = 18 }: { type: IconName; size?: number }) {
   return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -37,6 +40,9 @@ function App() {
   const [previewState, setPreviewState] = useState<PreviewState>('user');
   const [previewLevel, setPreviewLevel] = useState(0);
   const [previewAgentLevel, setPreviewAgentLevel] = useState(0);
+  const [previewSequence, setPreviewSequence] = useState<{ entry: SequenceEntry; phase: SequencePhase } | null>(null);
+  const sequenceClock = useRef<{ generation: number; timers: ReturnType<typeof setTimeout>[] }>({ generation: 0, timers: [] });
+  const stageRef = useRef<HTMLDivElement>(null);
   const [idleMotion, setIdleMotion] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [simpleRenderer, setSimpleRenderer] = useState(false);
@@ -44,6 +50,11 @@ function App() {
   const [sampleFinished, setSampleFinished] = useState(false);
   const [observations, setObservations] = useState({ speech: false, silence: false });
 
+  useEffect(() => () => {
+    sequenceClock.current.generation++;
+    sequenceClock.current.timers.forEach(clearTimeout);
+    sequenceClock.current.timers = [];
+  }, []);
   useEffect(() => {
     if (!preview || previewState === 'waiting' || previewState === 'thinking') { setPreviewLevel(0); setPreviewAgentLevel(0); return; }
     let frame = 0; const start = performance.now();
@@ -62,20 +73,49 @@ function App() {
     if (mic.status === 'idle' && observations.speech) setSampleFinished(true);
   }, [mic.status, mic.source, mic.speaking, observations.speech]);
 
+  const cancelSequence = () => {
+    sequenceClock.current.generation++;
+    sequenceClock.current.timers.forEach(clearTimeout);
+    sequenceClock.current.timers = [];
+    setPreviewSequence(null);
+  };
   const resetSample = () => { setSampleFinished(false); setObservations({ speech: false, silence: false }); };
-  const startMic = () => { setPreview(false); resetSample(); void mic.start(); };
-  const startSample = () => { setPreview(false); resetSample(); void mic.startSample(`${import.meta.env.BASE_URL}samples/voice-check.wav`); };
+  const startMic = () => { cancelSequence(); setPreview(false); resetSample(); void mic.start(); };
+  const startSample = () => { cancelSequence(); setPreview(false); resetSample(); void mic.startSample(`${import.meta.env.BASE_URL}samples/voice-check.wav`); };
   const startBothSamples = () => { startSample(); void agentVoice.start(`${import.meta.env.BASE_URL}samples/agent-voice.wav`); };
   const selectPreview = (enabled: boolean) => {
+    cancelSequence();
     if (enabled === preview) return;
     void mic.stop(); void agentVoice.stop(); resetSample(); setPreview(enabled);
   };
   const toggleAgent = () => {
+    cancelSequence();
     setPreview(false);
     if (agentVoice.status === 'idle') void agentVoice.start(`${import.meta.env.BASE_URL}samples/agent-voice.wav`);
     else void agentVoice.stop();
   };
-  const stop = () => { setPreview(false); void mic.stop(); void agentVoice.stop(); };
+  const stop = () => { cancelSequence(); setPreview(false); void mic.stop(); void agentVoice.stop(); };
+  const selectPreviewState = (state: PreviewState) => { cancelSequence(); setPreviewState(state); };
+  const startSequence = (entry: SequenceEntry) => {
+    cancelSequence();
+    void mic.stop(); void agentVoice.stop(); resetSample(); setPreview(true);
+    setPreviewState(entry === 'user' ? 'agent' : 'user');
+    setPreviewSequence({ entry, phase: 'first' });
+    const generation = sequenceClock.current.generation;
+    const schedule = (delay: number, phase: SequencePhase, state: PreviewState) => {
+      sequenceClock.current.timers.push(setTimeout(() => {
+        if (sequenceClock.current.generation !== generation) return;
+        setPreviewState(state); setPreviewSequence({ entry, phase });
+      }, delay));
+    };
+    schedule(1800, 'overlap', 'overlap');
+    schedule(4000, 'last', entry);
+    schedule(5800, 'complete', 'waiting');
+    if (window.matchMedia('(max-width: 760px)').matches) {
+      const quietScroll = reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      stageRef.current?.scrollIntoView({ block: 'center', behavior: quietScroll ? 'instant' : 'smooth' });
+    }
+  };
   const running = ['loading', 'listening', 'speaking', 'muted'].includes(mic.status);
   const loading = mic.status === 'loading';
   const sample = mic.source === 'sample';
@@ -85,12 +125,16 @@ function App() {
   const agentTalking = preview ? previewState === 'agent' || previewState === 'overlap' : agentVoice.audible;
   const thinking = preview ? previewState === 'thinking' : agentVoice.status === 'thinking';
   const overlapping = talking && agentTalking;
+  const overlapEntry = useOverlapEntry(talking, agentTalking);
+  const overlapDescription = overlapEntry === 'user' ? 'エージェントの声にあなたの声が重なっています'
+    : overlapEntry === 'agent' ? 'あなたの声にエージェントの声が重なっています'
+    : 'あなたとエージェントが同時に発話中';
   const mode = overlapping ? 'overlap' : talking ? 'user' : agentTalking ? 'agent' : thinking ? 'thinking' : 'waiting';
   const previewBands: [number, number, number] = [previewLevel * .8, previewLevel, previewLevel * .6];
   const previewAgentBands: [number, number, number] = [previewAgentLevel * .55, previewAgentLevel * .8, previewAgentLevel];
-  const status = preview ? `${PREVIEW_STATES.find(item => item.value === previewState)!.accessibleLabel ?? PREVIEW_STATES.find(item => item.value === previewState)!.label}のプレビュー（模擬）`
+  const status = preview ? (overlapping ? `${overlapDescription}（模擬）` : `${PREVIEW_STATES.find(item => item.value === previewState)!.accessibleLabel ?? PREVIEW_STATES.find(item => item.value === previewState)!.label}のプレビュー（模擬）`)
     : loading ? '音声の準備中'
-    : overlapping ? (sample ? '入力とエージェントのサンプルが同時に発話中' : 'あなたとエージェントが同時に発話中')
+    : overlapping ? `${overlapDescription}${sample ? '（サンプル）' : ''}`
     : mic.status === 'speaking' ? (sample ? 'サンプルの発話を検出' : 'あなたの声を検出')
     : thinking ? 'エージェントが考えています（デモ）'
     : agentTalking ? 'エージェント音声を再生中（サンプル）'
@@ -99,9 +143,13 @@ function App() {
     : mic.status === 'listening' ? (sample ? 'サンプルの無音を検出' : 'あなたの声を待っています')
     : mic.status === 'error' ? 'マイクを確認してください' : 'マイクはオフです';
   const stageBadge = preview ? '模擬プレビュー' : overlapping ? '同時発話' : sample ? 'サンプル解析' : loading ? '準備中' : mic.status === 'muted' ? 'ミュート' : running ? 'マイク接続中' : agentActive ? 'サンプル再生' : 'READY';
-  const dockNote = preview ? '状態を選んで動きを確認できます。音声は使いません。'
+  const sequenceStep = previewSequence?.phase === 'first' ? (previewSequence.entry === 'user' ? 'エージェントだけ（青）' : 'あなただけ（赤）')
+    : previewSequence?.phase === 'overlap' ? (previewSequence.entry === 'user' ? '赤が青に入り、同時発話' : '青が赤に入り、同時発話')
+    : previewSequence?.phase === 'last' ? (previewSequence.entry === 'user' ? 'あなただけ（赤）' : 'エージェントだけ（青）')
+    : '待機に戻りました';
+  const dockNote = preview ? (previewSequence ? `${sequenceStep}。音声を使わない模擬再生です。` : overlapping ? `${overlapDescription}（模擬）。音声は使いません。` : '状態を選んで動きを確認できます。音声は使いません。')
     : loading ? (sample ? '音声判定を準備しています。初回は少し時間がかかります。' : 'ブラウザのマイク許可を確認してください。初回は準備に時間がかかります。')
-    : overlapping ? (sample ? '二つのサンプルが同時に発話中。赤と青がひとつのWaveに重なります。' : 'あなたとエージェントが同時に発話中。赤と青がひとつのWaveに重なります。')
+    : overlapping ? `${overlapDescription}${sample ? '（サンプル）' : ''}。`
     : sample ? '日本語サンプルを解析しています。マイクは使用していません。'
     : mic.status === 'muted' ? 'マイクはミュート中です。再開すると新しく接続します。'
     : running ? '話すと赤く、黙ると緑へ。声の強さや響きに反応します。'
@@ -110,7 +158,7 @@ function App() {
 
   return <div className="app" data-mode={mode}>
     <header className="app-header">
-      <a href={import.meta.env.BASE_URL} className="brand" aria-label="Voice Wave ホーム"><span className="brand-icon"><Icon type="wave" size={20}/></span><span>Voice Wave</span><span className="brand-version">0.2</span></a>
+      <a href={import.meta.env.BASE_URL} className="brand" aria-label="Voice Wave ホーム"><span className="brand-icon"><Icon type="wave" size={20}/></span><span>Voice Wave</span><span className="brand-version">0.3</span></a>
       <nav className="header-nav" aria-label="メインナビゲーション"><span className="nav-current">Playground</span><a href="https://github.com/dj-thank/voice-wave/blob/main/README.ja.md" target="_blank" rel="noreferrer">ガイド<Icon type="external" size={13}/></a><a href="https://github.com/dj-thank/voice-wave" target="_blank" rel="noreferrer">GitHub<Icon type="external" size={13}/></a></nav>
     </header>
 
@@ -120,10 +168,10 @@ function App() {
       <div className="workspace">
         <section className="preview-panel" aria-label="音声に反応するWaveデモ">
           <div className="preview-toolbar"><div className="mode-switch" role="group" aria-label="操作モード"><button aria-pressed={!preview} onClick={() => selectPreview(false)}><Icon type="mic" size={15}/>音声入力</button><button aria-pressed={preview} onClick={() => selectPreview(true)}><Icon type="play" size={15}/>見た目をプレビュー</button></div><span className={`session-badge ${anythingActive ? 'is-active' : ''}`}><i/>{stageBadge}</span></div>
-          <div className={`stage-view ${preview ? 'has-preview' : ''}`}>
+          <div ref={stageRef} className={`stage-view ${preview ? 'has-preview' : ''}`}>
             <div className="orb-wrap"><VoiceConversation input={{level:preview ? (talking ? previewLevel : 0) : mic.level,speaking:talking,bands:preview ? previewBands : mic.bands}} output={{level:preview ? (agentTalking ? previewAgentLevel : 0) : agentVoice.level,speaking:agentTalking,thinking,bands:preview ? previewAgentBands : agentVoice.bands}} layout="wave" idleMotion={idleMotion} renderer={simpleRenderer ? 'fallback' : 'auto'} reducedMotion={reduceMotion} onError={setRendererError}/></div>
             <span className="sr-only" role="status" aria-live="polite">{status}</span>
-            {preview ? <div className="preview-state-buttons" role="group" aria-label="プレビュー状態">{PREVIEW_STATES.map(item => <button key={item.value} aria-label={item.accessibleLabel} aria-pressed={previewState === item.value} data-state={item.value} onClick={() => setPreviewState(item.value)}><i/>{item.label}</button>)}</div>
+            {preview ? <div className="preview-state-buttons" role="group" aria-label="プレビュー状態">{PREVIEW_STATES.map(item => <button key={item.value} aria-label={item.accessibleLabel} aria-pressed={previewState === item.value} data-state={item.value} onClick={() => selectPreviewState(item.value)}><i/>{item.label}</button>)}</div>
               : <div className="participant-key" aria-label={overlapping ? '入出力の状態：同時発話' : '入出力の状態'}><span data-active={talking}><i className="user-dot"/>あなた{talking && <span className="activity-mark" aria-label="発話中">•••</span>}</span><span data-active={agentTalking || thinking}><i className="agent-dot"/>エージェント{(agentTalking || thinking) && <span className="activity-mark" aria-label={thinking ? '思考中' : '再生中'}>{thinking ? '…' : '•••'}</span>}</span></div>}
           </div>
           <div className="call-dock">
@@ -138,6 +186,15 @@ function App() {
         </section>
 
         <aside className="inspector" aria-label="サンプルと表示設定">
+          {preview && <section className="inspector-section sequence-section" aria-label="発話の順番プレビュー">
+            <div className="section-heading"><h2>重なる順番を試す</h2><span>PREVIEW</span></div>
+            <p className="section-description">声が入る順番を、約6秒の模擬再生で。</p>
+            <div className="sequence-actions">
+              <button aria-label="青から赤が入る流れを再生" data-active={previewSequence?.entry === 'user' && previewSequence.phase !== 'complete'} onClick={() => startSequence('user')}><span className="sequence-dot agent"/>青に<span className="sequence-dot user"/>赤が入る<Icon type="play" size={12}/></button>
+              <button aria-label="赤から青が入る流れを再生" data-active={previewSequence?.entry === 'agent' && previewSequence.phase !== 'complete'} onClick={() => startSequence('agent')}><span className="sequence-dot user"/>赤に<span className="sequence-dot agent"/>青が入る<Icon type="play" size={12}/></button>
+            </div>
+            <p className="sequence-progress">{previewSequence ? <><span className="sequence-trail">{previewSequence.entry === 'user' ? '青 → 赤＋青 → 赤 → 待機' : '赤 → 赤＋青 → 青 → 待機'}</span><span>{sequenceStep}</span></> : <span>実際の音声は再生しません。</span>}</p>
+          </section>}
           <section className="inspector-section sample-section"><div className="section-heading"><h2>声を試す</h2><span>DEMO</span></div><p className="section-description">マイクがなくても、音声への反応を。</p>
             <div className="sample-actions">
               <button className="sample-action" aria-label="日本語サンプルで試す" disabled={loading || sample} data-active={sample} onClick={startSample}><span className="action-icon"><Icon type="wave"/></span><span className="action-copy"><strong>{sample ? 'サンプルを解析中' : 'あなたの声'}</strong><small>日本語の発話を検出</small></span><span className="sound-label">無音</span><Icon type="play" size={14}/></button>
@@ -158,7 +215,7 @@ function App() {
         </aside>
       </div>
 
-      <Diagnostics snapshot={{mode,model:vadModel,micStatus:mic.status,source:preview?'preview':mic.source,inputLevel:mic.level,probability:mic.probability,inputBands:mic.bands,agentStatus:agentVoice.status,outputLevel:agentVoice.level,outputBands:agentVoice.bands}} status={status} sampleResult={sampleFinished ? `サンプル確認：${observations.speech?'発話を検出':'発話未検出'}${observations.silence?' → 無音に復帰':''}` : null}/>
+      <Diagnostics snapshot={{mode,overlapEntry,model:vadModel,micStatus:mic.status,source:preview?'preview':mic.source,inputLevel:mic.level,probability:mic.probability,inputBands:mic.bands,agentStatus:agentVoice.status,outputLevel:agentVoice.level,outputBands:agentVoice.bands}} status={status} sampleResult={sampleFinished ? `サンプル確認：${observations.speech?'発話を検出':'発話未検出'}${observations.silence?' → 無音に復帰':''}` : null}/>
       <footer className="page-footer"><span>Built for voice. Open to everyone.</span><div><a href="https://ui.pipecat.ai/docs/visualizers/audio-visualizer-wave" target="_blank" rel="noreferrer">Pipecat Wave<Icon type="external" size={12}/></a><a href="https://github.com/dj-thank/voice-wave/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noreferrer">Licenses<Icon type="external" size={12}/></a></div></footer>
     </main>
   </div>;

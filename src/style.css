@@ -86,6 +86,16 @@ h1 { font-size: 28px; letter-spacing: .7px; line-height: 1.4; margin: 0; font-we
 .section-heading h2 { font-size: 13px; font-weight: 550; margin: 0; letter-spacing: .2px; }
 .section-heading > span { color: #5f6670; font-size: 8px; letter-spacing: 1px; font-weight: 600; }
 .section-description { font-size: 10px; line-height: 1.7; color: #808791; margin: 8px 0 14px; }
+.sequence-section { margin-bottom: 17px; padding-bottom: 15px; border-bottom: 1px solid var(--line); }
+.sequence-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+.sequence-actions button { min-width: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px; background: #1c2229; border: 1px solid #ffffff12; border-radius: 7px; color: #bac5d3; font-size: 10px; white-space: nowrap; }
+.sequence-actions button:hover, .sequence-actions button[data-active=true] { background: #29323d; border-color: #839cb65e; color: #edf3fa; }
+.sequence-dot { width: 5px; height: 5px; border-radius: 50%; flex: 0 0 auto; }
+.sequence-dot.agent { background: #54caff; }
+.sequence-dot.user { background: #ff382d; }
+.sequence-progress { min-height: 34px; margin: 10px 0 0; color: #8b97a7; font-size: 9px; line-height: 1.8; }
+.sequence-progress > span { display: block; }
+.sequence-progress .sequence-trail { color: #bdc9d8; }
 .sample-actions { display: flex; flex-direction: column; gap: 6px; }
 .sample-action { display: flex; align-items: center; width: 100%; gap: 10px; background: #1a1d20; border: 1px solid #ffffff08; border-radius: 9px; min-height: 61px; padding: 10px 12px; text-align: left; }
 .sample-action:hover:not(:disabled) { background: #24282d; border-color: #ffffff1a; }
@@ -151,3 +161,5 @@ summary::-webkit-details-marker { display: none; }
 @media (prefers-reduced-motion: reduce) { *, *:before, *:after { scroll-behavior: auto !important; transition-duration: 0s !important; } }
 
 @media (min-width: 761px) and (max-height: 800px) { .app[data-mode=overlap] .orb-wrap { width: min(100%,400px); top: 46%; } }
+@media (max-width: 760px) { .sequence-section { grid-column: 1/-1; margin-bottom: 22px; }.sequence-actions { max-width: 440px; }.sequence-actions button { font-size: 11px; min-height: 44px; }.sequence-progress { font-size: 10px; } }
+@media (max-width: 520px) { .sequence-actions button { font-size: 10px; }.sequence-section { padding-top: 0; padding-bottom: 16px; } }

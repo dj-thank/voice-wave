@@ -2,6 +2,7 @@ export interface DiagnosticSnapshot {
   mode: string; model: string; micStatus: string; source: string | null;
   inputLevel: number; probability: number; inputBands: number[];
   agentStatus: string; outputLevel: number; outputBands: number[];
+  overlapEntry?: 'user' | 'agent' | 'simultaneous' | null;
 }
 export interface DiagnosticEntry extends DiagnosticSnapshot { atMs: number; type: 'state' | 'sample' }
 const finite = (value: number) => Number.isFinite(value) ? Math.round(Math.min(1, Math.max(0, value)) * 1000) / 1000 : 0;
@@ -15,7 +16,8 @@ export class DiagnosticLog {
   private total = 0;
   constructor(now = 0, capacity = 900) { this.start = now; this.capacity = capacity; }
   append(snapshot: DiagnosticSnapshot, now: number) {
-    const signature = [snapshot.mode, snapshot.model, snapshot.micStatus, snapshot.source, snapshot.agentStatus].join('|');
+    const overlapEntry = snapshot.mode === 'overlap' && ['user', 'agent', 'simultaneous'].includes(snapshot.overlapEntry ?? '') ? snapshot.overlapEntry! : null;
+    const signature = [snapshot.mode, snapshot.model, snapshot.micStatus, snapshot.source, snapshot.agentStatus, overlapEntry].join('|');
     const changed = signature !== this.signature;
     const active = snapshot.micStatus === 'listening' || snapshot.micStatus === 'speaking' || snapshot.agentStatus !== 'idle' || snapshot.mode === 'user';
     if (!changed && (!active || now - this.lastAt < 250)) return false;
@@ -24,7 +26,7 @@ export class DiagnosticLog {
       mode: snapshot.mode, model: snapshot.model, micStatus: snapshot.micStatus, source: snapshot.source,
       inputLevel: finite(snapshot.inputLevel), probability: finite(snapshot.probability),
       inputBands: snapshot.inputBands.slice(0, 3).map(finite), agentStatus: snapshot.agentStatus,
-      outputLevel: finite(snapshot.outputLevel), outputBands: snapshot.outputBands.slice(0, 3).map(finite),
+      outputLevel: finite(snapshot.outputLevel), outputBands: snapshot.outputBands.slice(0, 3).map(finite), overlapEntry,
     });
     if (this.entries.length > this.capacity) this.entries.splice(0, this.entries.length - this.capacity);
     this.lastAt = now; this.signature = signature; this.total++;

@@ -31,7 +31,7 @@ export function LiveKitRadial({ channel, mode, inner = false, reducedMotion = fa
   return <svg viewBox="0 0 300 300" aria-hidden="true" data-radial-mode={mode}
     data-radial-adapter="livekit" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}>
     <g transform="translate(150 150)" stroke={color} opacity={active ? 0.72 : mode === 'thinking' ? 0.5 : 0.22}>
-      {mode === 'thinking' && !reducedMotion && <animate attributeName="opacity" values="0.22;0.55;0.22" dur="1.5s" repeatCount="indefinite" />}
+      {mode === 'thinking' && !reducedMotion && <animate attributeName="opacity" values="0.22;0.55;0.22" dur="3s" repeatCount="indefinite" />}
       {Array.from({ length: barCount }, (_, idx) => {
         // Mirror the measured low/mid/high bands around the circle. This does
         // not invent forty frequency bins or identify spoken phonemes.

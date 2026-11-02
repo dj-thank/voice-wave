@@ -2,9 +2,9 @@
 
 **Speak in red. Settle into green.** An audio-reactive React UI built from Pipecat Wave, with a browser-local microphone demo focused on a single Wave.
 
-[Interactive demo](https://dj-thank.github.io/voice-wave/) · [日本語](README.ja.md) · [Release](https://github.com/dj-thank/voice-wave/releases/tag/v0.2.0) · [Verification status](docs/STATUS.md)
+[Interactive demo](https://dj-thank.github.io/voice-wave/) · [日本語](README.ja.md) · [Release](https://github.com/dj-thank/voice-wave/releases/tag/v0.3.0) · [Verification status](docs/STATUS.md)
 
-A softly moving mint-green Wave becomes recording-red for your voice and blue/cyan for agent audio. Thinking pulses in the agent color. When both channels are active, red and blue occupy different parts of the same fluid shape, with no inner/outer layers. Motion follows measured audio energy and low/mid/high bands. It does **not** recognize phonemes or words.
+A gently moving, rounder mint-green Wave becomes recording-red for your voice and blue/cyan for agent audio. Thinking pulses in the agent color over a three-second cycle. When a second voice joins, its color enters the same fluid shape: red enters blue from the left, or blue enters red from the right. There are no inner/outer layers. Motion follows measured audio energy and low/mid/high bands. It does **not** recognize phonemes or words.
 
 ![Voice Wave demo](docs/preview.png)
 
@@ -14,13 +14,15 @@ The playground keeps the visualizer in the main canvas, microphone controls belo
 
 The **音声入力** mode responds to a microphone or actual sample audio. **見た目をプレビュー** switches to clearly labelled synthetic input and stops active microphone/sample sessions. Choose **待機** (waiting), **あなた** (user), **思考** (thinking), **エージェント** (agent), or **同時** (overlap; accessible label **同時発話**) to inspect each state without microphone access or audible output.
 
+In preview mode, **青に赤が入る** (accessible label **青から赤が入る流れを再生**) and **赤に青が入る** (accessible label **赤から青が入る流れを再生**) play the two entry orders. Each silent simulation runs first speaker alone for 1.8 seconds → both for 2.2 seconds → joining speaker alone for 1.8 seconds → waiting. Choosing another sequence, manual state, audio action or **終了** cancels the current sequence.
+
 Under **声を試す**, three sample actions use real bundled audio:
 
 - **あなたの声**: runs a Japanese sample through the speech detector without audible playback. Its accessible label is **日本語サンプルで試す**.
 - **エージェントの声**: plays a sample through the speakers and animates from its measured audio. Press it again to stop the output.
 - **二人の声を同時に**: starts input analysis and output playback together, using independent signals. This action produces sound.
 
-The playground uses one Wave for all five states. Input and output remain independent; simultaneous activity combines their measured energy and bands with `1 - (1 - input) × (1 - output)`, keeping values within 0–1 without clipping one source away. Numerical details for both signals remain available in diagnostics. Overlap means both signals are active; it does not establish that people are interrupting or understand the meaning of a conversation.
+The playground uses one Wave for all five states. Input and output remain independent; simultaneous activity combines their measured energy and bands with `1 - (1 - input) × (1 - output)`, keeping values within 0–1 without clipping one source away. Numerical details for both signals remain available in diagnostics. Overlap means both signals are active. Entry order follows observed changes in the two `speaking` flags and stays latched during that overlap episode. If both are already active at mount or first become active in one update, the order is unknown and the colors use a neutral red/blue composition. This is neither precise acoustic onset measurement nor an interpretation of conversational interruption.
 
 **待機中も動かす** is initially on. Turning it off freezes only the waiting state; speech still responds to audio and thinking still pulses. **動きを控えめに** is initially off and takes priority over that setting, suppressing motion in every state. Expand **詳細設定** for the Silero v6/v5 comparison and **シンプルな描画** (non-WebGL rendering). Stop input before changing the speech detector. The central visualizer stays clear of input meters and microphone-off text; numerical information is available in the collapsed diagnostics below the workspace.
 
@@ -28,10 +30,10 @@ The agent sample is a UI demonstration, not a live AI conversation. Use headphon
 
 ## Use the React component
 
-Version 0.2.0 is distributed as a GitHub Release tarball; it is not published to the npm registry.
+Version 0.3.0 is distributed as a GitHub Release tarball; it is not published to the npm registry.
 
 ```sh
-npm install https://github.com/dj-thank/voice-wave/releases/download/v0.2.0/dj-thank-voice-wave-0.2.0.tgz
+npm install https://github.com/dj-thank/voice-wave/releases/download/v0.3.0/dj-thank-voice-wave-0.3.0.tgz
 ```
 
 ```tsx
@@ -67,7 +69,14 @@ import { VoiceConversation } from '@dj-thank/voice-wave';
 />
 ```
 
-`idleMotion` defaults to `true` on both components. `idleMotion={false}` stops only waiting motion; `reducedMotion={true}` suppresses motion in all states. `VoiceConversation` selects `overlap` when both channels report `speaking: true`; its single Wave combines their level and bands.
+`idleMotion` defaults to `true` on both components. `idleMotion={false}` stops only waiting motion; `reducedMotion={true}` suppresses motion in all states. `VoiceConversation` selects `overlap` when both channels report `speaking: true`; its single Wave combines their level and bands. It automatically tracks which voice joined, keeps that order while both remain active, and returns to the remaining speaker when the other stops. A new overlap is evaluated from the remaining speaker.
+
+For direct `VoiceWave` control, `overlapEntry` describes the **joining** participant: `"user"` for red joining an existing blue voice, `"agent"` for blue joining red, or `"simultaneous"` (the default) when order is unknown. The exported `OverlapEntry` type contains these three values. Known-order entry takes about 850 ms; reduced motion shows the resulting colors without that sweep.
+
+```tsx
+<VoiceWave mode="overlap" overlapEntry="user" level={0.6}
+  style={{ width: 320, height: 320 }} />
+```
 
 The single-Wave layout is the playground's selected design. The published v0.1.0 API also retains experimental `wave-inside` and `wave-outside` layouts, with `innerSource` set to `user` or `agent`, from an earlier visual comparison. These composite layouts are not used in the main demo; they remain available for compatibility with existing consumers. See [the minimal React consumer](examples/minimal-react/) and [layout notes](docs/LAYOUTS.md).
 

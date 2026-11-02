@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DiagnosticLog } from '../src/diagnostics/log.ts';
 const state = { mode:'waiting', model:'v6',micStatus:'idle',source:null,inputLevel:0,probability:0,inputBands:[0,0,0],agentStatus:'idle',outputLevel:0,outputBands:[0,0,0] };
+test('diagnostics retain only known entry orders and record order changes immediately', () => {
+  const log = new DiagnosticLog(0);
+  log.append({...state,mode:'overlap',overlapEntry:'user'},0);
+  log.append({...state,mode:'overlap',overlapEntry:'agent'},1);
+  log.append({...state,mode:'overlap',overlapEntry:'private'},2);
+  log.append({...state,overlapEntry:'user'},3);
+  assert.deepEqual(log.read().map(row=>row.overlapEntry), ['user','agent',null,null]);
+  assert.equal(JSON.stringify(log.export()).includes('private'),false);
+});
 test('diagnostics sample active levels at 4Hz but preserve immediate state transitions', () => {
   const log = new DiagnosticLog(100);
   assert.equal(log.append(state,100),true);

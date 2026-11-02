@@ -1,10 +1,14 @@
 # Layout decision and compatibility
 
-The main playground uses **Wave alone**, with a softly moving mint-green idle and recording-red response. The inner/outer composite design was evaluated and rejected for the main demo. There is no layout or inner-participant selector in the playground.
+The main playground uses **Wave alone**, with a softly moving, slightly rounder mint-green idle and recording-red response. The inner/outer composite design was evaluated and rejected for the main demo. There is no layout or inner-participant selector in the playground.
 
-Input and output signals remain independent. One Wave shows five states: mint-green waiting, recording-red user speech, blue/cyan agent speech, blue thinking pulses, and red/blue overlap within the same shape. During overlap, its level and each low/mid/high band combine the two inputs as `1 - (1 - input) × (1 - output)`. Both original signals remain available in diagnostics. Audio acquisition and speech detection do not depend on the visual layout.
+Input and output signals remain independent. One Wave shows five states: mint-green waiting, recording-red user speech, blue/cyan agent speech, three-second blue thinking pulses, and red/blue overlap within the same shape. During overlap, its level and each low/mid/high band combine the two inputs as `1 - (1 - input) × (1 - output)`. Both original signals remain available in diagnostics. Audio acquisition and speech detection do not depend on the visual layout.
 
-The overlap state indicates concurrent signal activity, not semantic interruption or a judgment that a conversation has collided. The demo measures agent playback activity from output energy with a 180 ms release hold; it is not an output VAD or ASR model.
+`VoiceConversation` tracks the observed transition from a single active voice to both. When the user joins an agent, red enters from the left over about 850 ms; when the agent joins the user, blue enters from the right. This order remains latched while both are active. When one stops, the Wave follows the remaining voice; a later re-entry starts a new episode. If both flags appear initially or together in one update, the direction is unknown and the composition is neutral.
+
+Direct `VoiceWave` consumers can supply `overlapEntry="user"`, `"agent"` or `"simultaneous"` (the default), describing the joining participant. This is independent of `innerSource`, which belongs only to the retained composite API. The two silent sequence buttons in the playground demonstrate both entry orders without changing the audio stack.
+
+The overlap state indicates concurrent signal activity and the order of observed activity flags, not precise acoustic onset times, semantic interruption or a judgment that a conversation has collided. The demo measures agent playback activity from output energy with a 180 ms release hold; it is not an output VAD or ASR model.
 
 ## Earlier experimental layouts
 
@@ -28,8 +32,8 @@ License: Apache-2.0; copyright 2023 LiveKit, Inc. The source license and NOTICE 
 
 ## Motion, failure, and acceptance limits
 
-`idleMotion` defaults to `true`. With `idleMotion={false}`, only the Wave waiting animation stops; speech response and thinking pulses remain enabled. `reducedMotion={true}` takes priority and suppresses motion across all states while retaining semantic color changes. It also freezes radial lengths and thinking opacity pulses in retained composites. Offscreen and hidden-document WebGL work is suspended by the Wave renderer.
+`idleMotion` defaults to `true`. With `idleMotion={false}`, only the Wave waiting animation stops; speech response and thinking pulses remain enabled. `reducedMotion={true}` takes priority and suppresses motion across all states while retaining semantic color changes. The directional entry sweep is also suppressed; the resulting color state remains visible. It also freezes radial lengths and thinking opacity pulses in retained composites. Offscreen and hidden-document WebGL work is suspended by the Wave renderer.
 
 `renderer="fallback"` deliberately avoids WebGL and uses an energy-responsive CSS orb. Automatic WebGL initialization failure or context loss selects the same fallback; context restoration rebuilds the renderer. `onError` receives a message on failure and `null` after recovery. Fallback and composite rendering are presentation only and never acquire a microphone.
 
-The release checks target simultaneous state independence and overlap, bounded signal mixing, idle-motion controls, inner/outer assignment compatibility, and the distinction between agent thinking and user speech. `VoiceWave.active` can control audio-driven shape activity independently of `mode`, which selects the shared palette in composites. Browser checks and real-device limits are recorded in `STATUS.md` by the release verification flow. Source-level state checks do not establish microphone separation, perceptual timing, or mobile GPU performance.
+Acceptance criteria for the affected features include overlap entry order and sequence cancellation, bounded signal mixing, idle-motion controls, inner/outer assignment compatibility, and the distinction between agent thinking and user speech. `VoiceWave.active` can control audio-driven shape activity independently of `mode`, which selects the shared palette in composites. Browser checks and real-device limits are recorded in `STATUS.md` by the release verification flow. Source-level state checks do not establish microphone separation, perceptual timing, or mobile GPU performance.

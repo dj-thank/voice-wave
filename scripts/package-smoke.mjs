@@ -53,7 +53,7 @@ import {VoiceWave, VoiceConversation} from '@dj-thank/voice-wave';
 assert.equal(typeof VoiceWave, 'function');
 assert.equal(typeof VoiceConversation, 'function');
 for (const mode of ['waiting', 'user', 'agent', 'thinking', 'overlap']) {
-  const markup = renderToStaticMarkup(createElement(VoiceWave, {level:0.4, mode, idleMotion:false}));
+  const markup = renderToStaticMarkup(createElement(VoiceWave, {level:0.4, mode, idleMotion:false, overlapEntry:'user'}));
   assert(markup.includes('data-wave-mode="' + mode + '"'));
 }
 for (const layout of ['wave', 'wave-inside', 'wave-outside']) {
