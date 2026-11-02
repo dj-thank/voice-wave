@@ -1,0 +1,8 @@
+node_modules/
+dist/
+public/vad/
+.DS_Store
+work/
+*.log
+dist-lib/
+*.tgz

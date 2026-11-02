@@ -1,0 +1,58 @@
+{
+  "name": "@dj-thank/voice-wave",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 4317 --strictPort",
+    "prepare:assets": "node scripts/prepare-vad-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs",
+    "build": "npm run prepare:assets && tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4317 --strictPort",
+    "build:lib": "vite build --config vite.lib.config.ts && tsc -p tsconfig.lib.json",
+    "prepack": "npm run build:lib",
+    "test:package": "node scripts/package-smoke.mjs"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "@ricky0123/vad-web": "0.0.31",
+    "onnxruntime-web": "1.22.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "description": "Audio-reactive React Wave and radial components, with a local voice demo.",
+  "license": "BSD-2-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dj-thank/voice-wave.git"
+  },
+  "homepage": "https://dj-thank.github.io/voice-wave/",
+  "bugs": {
+    "url": "https://github.com/dj-thank/voice-wave/issues"
+  },
+  "main": "./dist-lib/index.js",
+  "module": "./dist-lib/index.js",
+  "types": "./dist-lib/types/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist-lib",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "public/licenses"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist-lib/types/index.d.ts",
+      "import": "./dist-lib/index.js",
+      "default": "./dist-lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "react": ">=18.3.0 <20"
+  }
+}

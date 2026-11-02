@@ -1,0 +1,48 @@
+# Verification status — 2026-11-02
+
+This file distinguishes implementation, automated checks, browser observations and remaining real-device limits. A successful sample run is not a substitute for real microphone acceptance.
+
+## Implemented
+
+- Browser-local microphone capture with explicit start, stop, mute, cancellation and permission-error handling.
+- Pipecat Wave shader with fixed recording-red speech, round green waiting, pulsing thinking and blue-violet agent output. Measured audio energy and low/mid/high bands drive the shape; no phoneme recognition is performed.
+- A clean central stage with screen-reader state updates. Detailed state and input/output metrics are in collapsed diagnostics: up to 900 in-memory entries, numerical values at up to 4 Hz, immediate state changes, explicit JSON export, pause and clear. No raw audio, device identifiers or transcripts are logged.
+- A consecutive-evidence visual speech gate: 3 frames at probability >= .55, or 2 at >= .85, starts speech; 10 frames below .35 return to idle. These are 32 ms model frames, not end-to-end latency measurements. This gate does not determine semantic turn endings.
+- Wave-only and LiveKit-derived radial comparison layouts, with independent input/output channels and reversible inner/outer assignments. Wave alone remains the default.
+- A renderer-only React package with TypeScript declarations and a separate minimal consumer. No microphone or VAD initialization occurs on import.
+
+The demo uses vad-web 0.0.31 and ONNX Runtime Web 1.22.0. Silero v6 is the default, with v5 available for comparison. This is an integration choice, not a measured all-model winner; the package's `v6` label is not asserted to be a specific upstream v6.2 revision.
+
+## Evidence before the release pass
+
+- TypeScript, production build and 16 tests passed for the microphone/playback lifecycle, spectral analysis, activity gate and diagnostics.
+- Browser sample runs detected speech, returned to silence and stopped. The central stage stayed clear of status text/meters, and reduced motion was initially off.
+- Diagnostics JSON download and clear were exercised. The observed log contained 39 state/metric entries with source sample/null and no audio payload.
+- Agent sample playback followed thinking → actual audio → idle, with nonzero output features driving blue-violet motion.
+
+Release-time package, composite layout, fallback and hosted checks are recorded below after execution. Earlier numerical comparisons used local prototype audio and do not apply to the redistributable fixtures.
+
+## Redistributable fixed-input fixtures
+
+The public WAV fixtures use Open JTalk 1.11 and HTS Voice “NIT ATR503 M001” 1.05, attributed under CC BY 3.0. They contain authored demonstration phrases, not user recordings. See [`public/samples/README.md`](../public/samples/README.md).
+
+`scripts/audio-evaluate.mjs` passes each fixture through the same bundled Silero v6 model, then feeds identical probabilities to the old and new visual gates. It covers normal speech, −20 dB, −30 dB, short 「はい」, speech with noise, digital silence, separated impulses and broadband noise. Full event/probability traces are in `public/samples/eval-results.json`.
+
+There are no annotated ground-truth speech boundaries, so missed-speech duration is not measured. Model-frame event times are not microphone-to-screen latency. This limited synthetic comparison is not a general Japanese accuracy score.
+
+The redistributable-fixture run detected all five speech conditions; the three 5-second negative conditions had zero false-lit duration with both gates. First onset was 32 ms earlier for normal speech and short 「はい」, and unchanged in the other three conditions. Final return was 192 ms earlier in all five. The new gate also settled during some within-phrase pauses (one to three additional quiet intervals); without annotated boundaries these cannot be classified as correct pauses or missed speech. The earlier return is a visual-response tradeoff, not a blanket accuracy improvement.
+
+## Release verification
+
+- All 19 tests, TypeScript and production build passed after the combined-layout revision.
+- A real 23 KB package archive was installed into an independent consumer: TypeScript Bundler and NodeNext checks, Vite build and server rendering passed. The browser consumer rendered the user speaking state without microphone acquisition. Vite reports a non-failing warning about the library's `use client` directive; client-side and SSR smoke checks passed, but no Next.js integration is claimed.
+- Browser: both synthetic signals were simultaneously active; inner/outer assignment and both composite layouts could be selected. Following visual feedback, the detached ring and black center mask were removed. The radial marks now overlap the Wave's inner contour and share its speaking color; per-channel activity remains independent.
+- Browser keyboard interaction: expanded settings, changed layout and enabled reduced motion and explicit non-WebGL rendering. DOM confirmed the canvas hidden and the fallback active. Actual GPU context loss/recovery was not induced.
+- Hosted publication/readback is pending. The responsive viewport override was unavailable in this browser session; mobile layout/device acceptance remains unverified.
+
+## Remaining boundaries
+
+- No ASR, live LLM conversation, cloud TTS, phoneme alignment or speaker identification. Agent speech is a labelled bundled sample.
+- Nearby voices and acoustic echo can trigger input VAD. Browser echo cancellation is requested, but echo robustness is unmeasured.
+- Natural Japanese speech accuracy, real-life noise, p50/p95 onset/release latency, mobile/Safari hardware compatibility, GPU and energy measurements remain open.
+- The first local version received hands-on microphone feedback. Subsequent automated/sample checks do not establish real microphone acceptance on every browser or device.
