@@ -8,7 +8,7 @@ This file distinguishes implementation, automated checks, browser observations a
 - Pipecat Wave shader with fixed recording-red speech, round green waiting, pulsing thinking and blue-violet agent output. Measured audio energy and low/mid/high bands drive the shape; no phoneme recognition is performed.
 - A clean central stage with screen-reader state updates. Detailed state and input/output metrics are in collapsed diagnostics: up to 900 in-memory entries, numerical values at up to 4 Hz, immediate state changes, explicit JSON export, pause and clear. No raw audio, device identifiers or transcripts are logged.
 - A consecutive-evidence visual speech gate: 3 frames at probability >= .55, or 2 at >= .85, starts speech; 10 frames below .35 return to idle. These are 32 ms model frames, not end-to-end latency measurements. This gate does not determine semantic turn endings.
-- Wave-only and LiveKit-derived radial comparison layouts, with independent input/output channels and reversible inner/outer assignments. Wave alone remains the default.
+- The main playground uses one original Pipecat Wave. Color distinguishes user speech, agent speech and idle; thinking retains its pulse. The rejected inner/outer comparison is removed from the demo. Its previously published component props remain available for API compatibility; see `docs/LAYOUTS.md`.
 - A renderer-only React package with TypeScript declarations and a separate minimal consumer. No microphone or VAD initialization occurs on import.
 
 The demo uses vad-web 0.0.31 and ONNX Runtime Web 1.22.0. Silero v6 is the default, with v5 available for comparison. This is an integration choice, not a measured all-model winner; the package's `v6` label is not asserted to be a specific upstream v6.2 revision.
@@ -43,6 +43,17 @@ The redistributable-fixture run detected all five speech conditions; the three 5
 - The hosted demo loaded same-origin audio/model assets and reported speech detected → silence recovery → idle for the redistributable Japanese sample. No console errors/warnings were observed in that run.
 - Production microphone acquisition stayed in the preparing state in the test browser; app-level permission controls were unavailable to automation. The request was canceled and the UI returned to microphone-off. Actual hosted microphone capture is not claimed as verified; users must allow microphone access and test their device.
 - Responsive viewport override was unavailable in this browser session; mobile layout/device acceptance remains unverified.
+
+## Playground redesign verification — 2026-11-02
+
+- Rebuilt the page around the official Pipecat Wave documentation reference: restrained header, clear preview canvas, aligned borders/spacing, a stable start/stop dock, and separate sample/settings controls. The original renderer, shaders, palettes, VAD and audio engine are unchanged.
+- Removed the inner/outer layout selectors following user review. The main demo uses a single fluid Wave with recording red for the user, blue-violet for the agent, green waiting and pulsing thinking. Reduced motion and the simple fallback are off initially. The fallback is an optional compatibility setting, not the default visual.
+- Explicit preview states are waiting, user, thinking and agent. Switching into preview stops actual input/output. The common end button stops preview, input and output; preparation can be canceled. Diagnostics remain mounted across mode and settings changes.
+- Focused source review found no functional blocker. All 19 existing tests and the TypeScript/production build passed. Renderer/package/audio sources have no changes in this pass.
+- Browser: all four preview states worked with keyboard controls. Actual bundled agent playback transitioned into preview with output returning to idle. Preparation canceled to idle. The Japanese fixture detected speech, returned to silence and ended. Paired samples showed both channels speaking; common stop returned both to idle. Model selection was disabled during capture. Logs persisted across settings changes.
+- Browser: optional simple rendering hid the WebGL canvas; reduced motion could be selected. Both options were reset to their default off state afterward. No console warnings/errors were observed in the focused sample run.
+- Responsive viewport checks passed at 320 × 740, 390 × 844 and 1280 × 720: no horizontal page overflow; narrow toolbar labels wrap; the desktop start/stop buttons fit within the first viewport. These are browser viewport checks, not real mobile/Safari hardware acceptance. This supersedes the earlier session's unavailable viewport override.
+- Real microphone hardware, acoustic noise and cloud/LLM conversation are not newly validated by this UI pass. The limits below remain applicable.
 
 ## Remaining boundaries
 

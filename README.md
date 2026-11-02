@@ -1,6 +1,6 @@
 # Voice Wave
 
-**Speak in red. Settle into green.** An audio-reactive React UI built from Pipecat Wave, with a browser-local microphone demo and optional LiveKit-derived radial layouts.
+**Speak in red. Settle into green.** An audio-reactive React UI built from Pipecat Wave, with a browser-local microphone demo focused on a single Wave.
 
 [Interactive demo](https://dj-thank.github.io/voice-wave/) · [日本語](README.ja.md) · [Release](https://github.com/dj-thank/voice-wave/releases/tag/v0.1.0) · [Verification status](docs/STATUS.md)
 
@@ -10,15 +10,21 @@ The default is a calm green orb that becomes recording-red during speech. Agent 
 
 ## Try the demo
 
-Open the demo in a browser, choose **マイクを開始** (start microphone), and allow microphone access. **ミュート** releases capture, **再開** starts a new capture session, and **終了** stops it. Microphone use requires HTTPS or localhost. No API key is needed.
+The playground keeps the visualizer in the main canvas, microphone controls below it, and sample/display controls in the inspector. Open the demo, choose **マイクを開始** (start microphone), and allow microphone access. **ミュート** releases capture and **再開** starts a new capture session. The shared **終了** control stops microphone input, sample playback and synthetic preview; during preparation it becomes **キャンセル**. Microphone use requires HTTPS or localhost. No API key is needed.
 
-- **見た目をプレビュー**: labelled synthetic motion, without microphone access.
-- **日本語サンプルで試す**: a bundled Japanese sample through the actual speech detector, with no audible playback.
-- **エージェント音声を試す**: plays a bundled sample through the speakers and animates from its real audio.
-- Layout comparison: Wave alone, Wave inside a radial visualizer, or Wave outside it. Swap the user/agent assignment without changing the input signals. Wave alone remains the default; composite layouts expose both signals independently. Their colors follow one shared speaking state, while inner/outer position identifies each signal.
-- **動きを控えめに**: optional reduced-motion presentation, initially off.
+The **音声入力** mode responds to a microphone or actual sample audio. **見た目をプレビュー** switches to clearly labelled synthetic input and stops active microphone/sample sessions. Choose **待機** (waiting), **あなた** (user), **思考** (thinking), or **エージェント** (agent) to inspect each state without microphone access or audible output.
 
-The agent sample is a UI demonstration, not a live AI conversation. In the single-Wave layout, user speech takes visual priority during simultaneous speech. Use headphones when comparing real microphone input with speaker output.
+Under **声を試す**, three sample actions use real bundled audio:
+
+- **あなたの声**: runs a Japanese sample through the speech detector without audible playback. Its accessible label is **日本語サンプルで試す**.
+- **エージェントの声**: plays a sample through the speakers and animates from its measured audio. Press it again to stop the output.
+- **二人の声を同時に**: starts input analysis and output playback together, using independent signals. This action produces sound.
+
+The playground uses one Wave for waiting, user speech, thinking and agent speech. Input and output are measured independently; when both speak at once, the Wave gives user speech priority. Numerical details for both signals remain available in diagnostics.
+
+**動きを控えめに** reduces motion and is initially off. Expand **詳細設定** for the Silero v6/v5 comparison and **シンプルな描画** (non-WebGL rendering). Stop input before changing the speech detector. The central visualizer stays clear of input meters and microphone-off text; numerical information is available in the collapsed diagnostics below the workspace.
+
+The agent sample is a UI demonstration, not a live AI conversation. Use headphones when comparing real microphone input with speaker output.
 
 ## Use the React component
 
@@ -54,13 +60,12 @@ import { VoiceConversation } from '@dj-thank/voice-wave';
 <VoiceConversation
   input={{ speaking: true, level: 0.6, bands: [0.3, 0.6, 0.2] }}
   output={{ speaking: true, thinking: false, level: 0.4 }}
-  layout="wave-inside"
-  innerSource="user"
+  layout="wave"
   style={{ width: 360, height: 360 }}
 />
 ```
 
-`layout` accepts `wave`, `wave-inside`, or `wave-outside`. `innerSource` selects `user` or `agent` for composite layouts. See [the minimal React consumer](examples/minimal-react/) and [layout notes](docs/LAYOUTS.md).
+The single-Wave layout is the playground's selected design. The published v0.1.0 API also retains experimental `wave-inside` and `wave-outside` layouts, with `innerSource` set to `user` or `agent`, from an earlier visual comparison. These composite layouts are not used in the main demo; they remain available for compatibility with existing consumers. See [the minimal React consumer](examples/minimal-react/) and [layout notes](docs/LAYOUTS.md).
 
 ## Run and verify from source
 

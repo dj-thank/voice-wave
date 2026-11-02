@@ -1,6 +1,12 @@
-# Layout comparison
+# Layout decision and compatibility
 
-The first release defaults to **Wave alone**, preserving the preferred calm green idle and recording-red response. Composite layouts are an optional comparison, not a requirement to use two different audio services.
+The main playground uses **Wave alone**, preserving the preferred calm green idle and recording-red response. The inner/outer composite design was evaluated and rejected for the main demo. There is no layout or inner-participant selector in the playground.
+
+Input and output signals remain independent. One Wave shows user speech first, otherwise agent speech, thinking or waiting. During simultaneous speech, user speech takes priority; both signals remain available in diagnostics. Audio acquisition and speech detection do not depend on the visual layout.
+
+## Earlier experimental layouts
+
+The published v0.1.0 React API retains the following layouts for compatibility with existing consumers. The two composite layouts are earlier visual experiments, not the selected demo design. They do not require two different audio services.
 
 | Layout | Inner layer | Outer layer | Default participant assignment |
 |---|---|---|---|
@@ -8,9 +14,9 @@ The first release defaults to **Wave alone**, preserving the preferred calm gree
 | `wave-inside` | Pipecat-derived Wave | LiveKit-derived Radial | Inner user, outer agent |
 | `wave-outside` | LiveKit-derived Radial | Pipecat-derived Wave | Inner user, outer agent |
 
-Set `innerSource="agent"` to exchange the participant assignment in either composite. Both layers share one palette for the current conversation state: recording red during user speech, blue-violet during agent-only speech, and green during thinking/waiting. User speech has color priority during simultaneous speech. Participant identity is represented by inner/outer position, while each layer's energy and motion still follow its own independent signal. Switching a layout does not restart audio, change the detector, or change source ownership. The comparison uses the same input/output snapshots for each geometry.
+For API consumers using a composite layout, `innerSource="agent"` exchanges the participant assignment. Both layers share one palette for the current conversation state: recording red during user speech, blue-violet during agent-only speech, and green during thinking/waiting. User speech has color priority during simultaneous speech. Participant identity is represented by inner/outer position, while each layer's energy and motion still follow its own independent signal. Changing the component's layout prop does not acquire audio, change the detector, or change source ownership.
 
-Wave alone is recommended for the initial demo because the user's voice is the primary interaction and the uncluttered resting shape is a stated preference. In composites, a thin Radial sits just inside the Wave contour instead of orbiting separately. There is no black center disk or opaque mask: the natural center of the Wave remains visible. The `wave-inside` preset puts the Radial at the contour (radius 68 in a 300-unit view), while `wave-outside` moves it slightly further inward (radius 58). The bars grow inward, preserving a single integrated shape. This reflects direct visual feedback, not a user-study result.
+In the retained composite implementation, a thin Radial sits just inside the Wave contour instead of orbiting separately. There is no black center disk or opaque mask: the natural center of the Wave remains visible. The `wave-inside` preset puts the Radial at the contour (radius 68 in a 300-unit view), while `wave-outside` moves it slightly further inward (radius 58). The bars grow inward. These details document the earlier experiment; they are not a recommendation or a user-study result.
 
 ## Source and modifications
 
