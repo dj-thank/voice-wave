@@ -1,116 +1,57 @@
 # Voice Wave
 
-**Speak in red. Settle into green.** An audio-reactive React UI built from Pipecat Wave, with a browser-local microphone demo focused on a single Wave.
+An audio-reactive React visualizer and a browser voice playground.
 
-[Interactive demo](https://dj-thank.github.io/voice-wave/) · [日本語](README.ja.md) · [Release](https://github.com/dj-thank/voice-wave/releases/tag/v0.3.1) · [Verification status](docs/STATUS.md)
+[Demo](https://dj-thank.github.io/voice-wave/) · [日本語](README.ja.md) · [API](docs/API.md)
 
-A gently moving, rounder mint-green Wave becomes recording-red for your voice and blue/cyan for agent audio. Thinking pulses in the agent color over a three-second cycle. When a second voice joins, its color enters the same fluid shape: red enters blue from the left, or blue enters red from the right. There are no inner/outer layers. Motion follows measured audio energy and low/mid/high bands. It does **not** recognize phonemes or words.
+![Voice Wave](docs/preview.png)
 
-![Voice Wave demo](docs/preview.png)
+User speech is red, agent speech is blue, and waiting is mint green. Thinking pulses in blue. When voices overlap, the joining speaker's color flows into the same Wave.
 
-## Try the demo
+## Try it
 
-The playground keeps the visualizer in the main canvas, microphone controls below it, and sample/display controls in the inspector. Open the demo, choose **マイクを開始** (start microphone), and allow microphone access. **ミュート** releases capture and **再開** starts a new capture session. The shared **終了** control stops microphone input, sample playback and synthetic preview; during preparation it becomes **キャンセル**. Microphone use requires HTTPS or localhost. No API key is needed.
+Start the microphone, play a sample, or select **プレビュー** to explore the five states without audio. Waiting motion and reduced motion have separate switches. **終了** stops input, playback and preview.
 
-The **音声入力** mode responds to a microphone or actual sample audio. **見た目をプレビュー** switches to clearly labelled synthetic input and stops active microphone/sample sessions. Choose **待機** (waiting), **あなた** (user), **思考** (thinking), **エージェント** (agent), or **同時** (overlap; accessible label **同時発話**) to inspect each state without microphone access or audible output.
+Audio is processed in your browser. Diagnostics are optional in-memory state/level logs; they contain no recordings. The agent sample and [conversation film](docs/DEMO_VIDEO.md) use prepared speech.
 
-In preview mode, **青に赤が入る** (accessible label **青から赤が入る流れを再生**) and **赤に青が入る** (accessible label **赤から青が入る流れを再生**) play the two entry orders. Each silent simulation runs first speaker alone for 1.8 seconds → both for 2.2 seconds → joining speaker alone for 1.8 seconds → waiting. Choosing another sequence, manual state, audio action or **終了** cancels the current sequence.
+## React
 
-Under **声を試す**, three sample actions use real bundled audio:
-
-- **あなたの声**: runs a Japanese sample through the speech detector without audible playback. Its accessible label is **日本語サンプルで試す**.
-- **エージェントの声**: plays a sample through the speakers and animates from its measured audio. Press it again to stop the output.
-- **二人の声を同時に**: starts input analysis and output playback together, using independent signals. This action produces sound.
-
-The playground uses one Wave for all five states. Input and output remain independent; simultaneous activity combines their measured energy and bands with `1 - (1 - input) × (1 - output)`, keeping values within 0–1 without clipping one source away. Numerical details for both signals remain available in diagnostics. Overlap means both signals are active. Entry order follows observed changes in the two `speaking` flags and stays latched during that overlap episode. If both are already active at mount or first become active in one update, the order is unknown and the colors use a neutral red/blue composition. This is neither precise acoustic onset measurement nor an interpretation of conversational interruption.
-
-**待機中も動かす** is initially on. Turning it off freezes only the waiting state; speech still responds to audio and thinking still pulses. **動きを控えめに** is initially off and takes priority over that setting, suppressing motion in every state. Expand **詳細設定** for the Silero v6/v5 comparison and **シンプルな描画** (non-WebGL rendering). Stop input before changing the speech detector. The central visualizer stays clear of input meters and microphone-off text; numerical information is available in the collapsed diagnostics below the workspace.
-
-The agent sample is a UI demonstration, not a live AI conversation. Use headphones when comparing real microphone input with speaker output.
-
-## Use the React component
-
-Version 0.3.1 is distributed as a GitHub Release tarball; it is not published to the npm registry.
+Install the latest renderer release. React 18.3–19 is required.
 
 ```sh
-npm install https://github.com/dj-thank/voice-wave/releases/download/v0.3.1/dj-thank-voice-wave-0.3.1.tgz
+npm install https://github.com/dj-thank/voice-wave/releases/download/v0.3.2/dj-thank-voice-wave-0.3.2.tgz
 ```
-
-```tsx
-import { VoiceWave } from '@dj-thank/voice-wave';
-
-export function SpeakingIndicator() {
-  return (
-    <VoiceWave
-      mode="user"
-      level={0.6}
-      bands={[0.3, 0.6, 0.2]}
-      idleMotion={true}
-      reducedMotion={false}
-      style={{ width: 320, height: 320 }}
-    />
-  );
-}
-```
-
-This snippet uses fixed values. In an application, supply your own measured level and bands (each from 0 to 1), and switch `mode` among `waiting`, `user`, `agent`, `thinking`, and `overlap`. The component does not open a microphone, request permission, record audio, or require a Pipecat/LiveKit connection. React is a peer dependency.
-
-For independent input/output, use `VoiceConversation`:
 
 ```tsx
 import { VoiceConversation } from '@dj-thank/voice-wave';
 
 <VoiceConversation
   input={{ speaking: true, level: 0.6, bands: [0.3, 0.6, 0.2] }}
-  output={{ speaking: true, thinking: false, level: 0.4 }}
-  layout="wave"
-  idleMotion={true}
-  style={{ width: 360, height: 360 }}
-/>
+  output={{ speaking: false, level: 0, thinking: false }}
+  style={{ width: 320, height: 320 }}
+/>;
 ```
 
-`idleMotion` defaults to `true` on both components. `idleMotion={false}` stops only waiting motion; `reducedMotion={true}` suppresses motion in all states. `VoiceConversation` selects `overlap` when both channels report `speaking: true`; its single Wave combines their level and bands. It automatically tracks which voice joined, keeps that order while both remain active, and returns to the remaining speaker when the other stops. A new overlap is evaluated from the remaining speaker.
+Supply your own activity, level and optional frequency bands. The renderer does not open a microphone. See the [API](docs/API.md) and [working example](examples/minimal-react/).
 
-For direct `VoiceWave` control, `overlapEntry` describes the **joining** participant: `"user"` for red joining an existing blue voice, `"agent"` for blue joining red, or `"simultaneous"` (the default) when order is unknown. The exported `OverlapEntry` type contains these three values. Known-order entry takes about 850 ms; reduced motion shows the resulting colors without that sweep.
+## Development
 
-```tsx
-<VoiceWave mode="overlap" overlapEntry="user" level={0.6}
-  style={{ width: 320, height: 320 }} />
-```
-
-The single-Wave layout is the playground's selected design. The published v0.1.0 API also retains experimental `wave-inside` and `wave-outside` layouts, with `innerSource` set to `user` or `agent`, from an earlier visual comparison. These composite layouts are not used in the main demo; they remain available for compatibility with existing consumers. See [the minimal React consumer](examples/minimal-react/) and [layout notes](docs/LAYOUTS.md).
-
-## Run and verify from source
-
-Use Node.js 24 and npm.
+Use Node.js 24.
 
 ```sh
-git clone https://github.com/dj-thank/voice-wave.git
-cd voice-wave
 npm ci
-npm run build
+npm run prepare:assets
 npm run dev
 ```
 
-Open `http://127.0.0.1:4317/`.
+Open `http://127.0.0.1:4317/`. Run `npm test`, `npm run build` and `npm run test:package` to verify a change; `npm run format` formats the source.
 
-```sh
-npm test
-npm run typecheck
-npm run build
-npm run test:package
-```
+| Directory         | Responsibility                            |
+| ----------------- | ----------------------------------------- |
+| `src/playground`  | Page, controls and preview sessions       |
+| `src/visualizer`  | Reusable rendering components             |
+| `src/audio`       | Capture, playback and speech activity     |
+| `src/diagnostics` | Bounded event log                         |
+| `scripts`         | Assets, package checks and film authoring |
 
-The pinned demo dependencies prepare local Silero models, the audio worklet, and ONNX WASM files in `public/vad/`. Browser runtime assets and samples are served from the same origin; they are not fetched from a third-party CDN. The distributable renderer is separate from the demo's speech-detection stack.
-
-## Privacy and diagnostics
-
-Microphone audio is processed in the browser. The app does not upload audio or persist recordings. The hosting service still receives normal web requests for page and asset delivery.
-
-**診断・ログ** is collapsed by default. It keeps up to 900 state/metric entries in browser memory: numeric samples at up to 4 Hz, with state changes logged immediately. **JSONを保存** explicitly downloads them; **クリア** clears them; **ログを記録** pauses collection. Reloading clears the in-memory log. Entries contain state, model, input/output level and band values; they exclude audio samples, device identifiers and transcripts. No analytics service is integrated.
-
-## Limits and provenance
-
-Silero v6 is the demo default, with v5 available for comparison. This choice is not a claim of best Japanese accuracy. Agent sample activity is measured from playback energy, with a 180 ms release hold to bridge brief gaps. It is not a second speech-recognition model or proof of a conversational interruption. The input visual activity gate is separate from semantic turn detection; nearby speech or acoustic echo can still trigger it. Natural-speaker accuracy, mobile/Safari devices, end-to-end latency and energy use are not fully measured. See [validation evidence and limits](docs/STATUS.md).
-
-This project contains the actual Pipecat Wave shader (BSD-2-Clause) and an adapted LiveKit radial renderer (Apache-2.0). It is an independent project, not an official Pipecat or LiveKit product. Original code is BSD-2-Clause; bundled dependencies and samples retain their own licenses. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
+[Verification](docs/STATUS.md) · [BSD-2-Clause](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)

@@ -1,9 +1,7 @@
-# Voice Wave v0.3.1
+# Voice Wave v0.3.2
 
-A quieter playground: shorter labels and fewer explanations around the Wave. Existing microphone, preview, sample and diagnostic controls remain available.
+The playground now separates page composition, controls and preview sessions. Animation updates stay inside the Wave; preview cancellation and replacement have dedicated tests.
 
-Adds an Irodori-TTS conversation-film authoring workflow with separate input/output audio, and an optional `onRenderFrame` callback for capturing the original WebGL renderer. The authored conversation demonstrates the design; its responses are scripted.
+Removed unused CSS, redundant markup and repeated README explanations. Formatting and unused-code checks keep subsequent changes consistent. Rendering, audio detection and the public component API retain their behavior.
 
-28 tests, production build and an independent package consumer (Bundler/NodeNext, Vite, SSR) passed. See [video workflow](https://github.com/dj-thank/voice-wave/blob/main/docs/DEMO_VIDEO.md) and [verification record](https://github.com/dj-thank/voice-wave/blob/main/docs/STATUS.md).
-
-The renderer archive is a GitHub Release distribution, not an npm registry publication.
+See [verification](https://github.com/dj-thank/voice-wave/blob/main/docs/STATUS.md) and the [React API](https://github.com/dj-thank/voice-wave/blob/main/docs/API.md).

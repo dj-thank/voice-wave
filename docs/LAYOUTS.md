@@ -14,11 +14,11 @@ The overlap state indicates concurrent signal activity and the order of observed
 
 The React API introduced in v0.1.0 retains the following layouts for compatibility with existing consumers. The two composite layouts are earlier visual experiments, not the selected demo design. They do not require two different audio services.
 
-| Layout | Inner layer | Outer layer | Default participant assignment |
-|---|---|---|---|
-| `wave` | Pipecat-derived Wave | — | Both signals share one Wave; red/blue overlap when both speak |
-| `wave-inside` | Pipecat-derived Wave | LiveKit-derived Radial | Inner user, outer agent |
-| `wave-outside` | LiveKit-derived Radial | Pipecat-derived Wave | Inner user, outer agent |
+| Layout         | Inner layer            | Outer layer            | Default participant assignment                                |
+| -------------- | ---------------------- | ---------------------- | ------------------------------------------------------------- |
+| `wave`         | Pipecat-derived Wave   | —                      | Both signals share one Wave; red/blue overlap when both speak |
+| `wave-inside`  | Pipecat-derived Wave   | LiveKit-derived Radial | Inner user, outer agent                                       |
+| `wave-outside` | LiveKit-derived Radial | Pipecat-derived Wave   | Inner user, outer agent                                       |
 
 For API consumers using a composite layout, `innerSource="agent"` exchanges the participant assignment. The Wave follows the current conversation colors. The retained radial uses red during user speech/overlap, blue during agent speech/thinking, and mint-green during waiting. Participant identity is represented by inner/outer position, while each layer's energy and motion still follow its own independent signal. Changing the component's layout prop does not acquire audio, change the detector, or change source ownership.
 
