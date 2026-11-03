@@ -1,6 +1,7 @@
 /** Reject only numerical silence/DC, not quiet speech below the visual meter floor. */
 export function hasVariableAudio(frame: Float32Array): boolean {
-  let low = Infinity, high = -Infinity;
+  let low = Infinity,
+    high = -Infinity;
   for (const value of frame) {
     if (value < low) low = value;
     if (value > high) high = value;

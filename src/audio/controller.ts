@@ -15,15 +15,32 @@ export interface AudioCallbacks {
   speech: (speaking: boolean) => void;
   ended: () => void;
 }
-export interface AudioSession { dispose: () => Promise<void> }
-export type SessionFactory = (source: InputSource, callbacks: AudioCallbacks, signal: AbortSignal) => Promise<AudioSession>;
+export interface AudioSession {
+  dispose: () => Promise<void>;
+}
+export type SessionFactory = (
+  source: InputSource,
+  callbacks: AudioCallbacks,
+  signal: AbortSignal,
+) => Promise<AudioSession>;
 
-const initial: AudioSnapshot = { status: 'idle', source: null, speaking: false, level: 0, bands: [0, 0, 0], probability: 0, error: null };
+const initial: AudioSnapshot = {
+  status: 'idle',
+  source: null,
+  speaking: false,
+  level: 0,
+  bands: [0, 0, 0],
+  probability: 0,
+  error: null,
+};
 export function microphoneError(error: unknown): string {
   const name = error instanceof Error ? error.name : '';
-  if (name === 'NotAllowedError' || name === 'SecurityError') return 'マイクの使用が許可されていません。ブラウザのサイト設定でマイクを許可して、もう一度開始してください。';
-  if (name === 'NotFoundError' || name === 'DevicesNotFoundError') return 'マイクが見つかりません。接続を確認して、もう一度開始してください。';
-  if (name === 'NotReadableError' || name === 'TrackStartError') return 'マイクを開けませんでした。他のアプリの使用状況やOSのマイク設定を確認してください。';
+  if (name === 'NotAllowedError' || name === 'SecurityError')
+    return 'マイクの使用が許可されていません。ブラウザのサイト設定でマイクを許可して、もう一度開始してください。';
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError')
+    return 'マイクが見つかりません。接続を確認して、もう一度開始してください。';
+  if (name === 'NotReadableError' || name === 'TrackStartError')
+    return 'マイクを開けませんでした。他のアプリの使用状況やOSのマイク設定を確認してください。';
   if (error instanceof Error && error.message.startsWith('表示:')) return error.message.slice(3);
   return '音声の準備ができませんでした。ページを再読み込みして、もう一度開始してください。';
 }
@@ -37,9 +54,16 @@ export class MicrophoneController {
   private session: AudioSession | null = null;
   private lastSource: InputSource = { kind: 'microphone' };
   private factory: SessionFactory;
-  constructor(factory: SessionFactory) { this.factory = factory; }
+  constructor(factory: SessionFactory) {
+    this.factory = factory;
+  }
   getSnapshot = () => this.snapshot;
-  subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
   private publish(patch: Partial<AudioSnapshot>) {
     this.snapshot = { ...this.snapshot, ...patch };
     for (const listener of this.listeners) listener();
@@ -58,18 +82,27 @@ export class MicrophoneController {
     const valid = () => this.generation === id && !abort.signal.aborted;
     try {
       // The factory starts AudioContext in the current user gesture.
-      const pending = this.factory(source, {
-        frame: (probability, level, bands = [0, 0, 0]) => {
-          if (valid()) this.publish({ probability, level, bands });
+      const pending = this.factory(
+        source,
+        {
+          frame: (probability, level, bands = [0, 0, 0]) => {
+            if (valid()) this.publish({ probability, level, bands });
+          },
+          speech: (speaking) => {
+            if (valid()) this.publish({ speaking, status: speaking ? 'speaking' : 'listening' });
+          },
+          ended: () => {
+            if (valid()) void this.stop();
+          },
         },
-        speech: speaking => {
-          if (valid()) this.publish({ speaking, status: speaking ? 'speaking' : 'listening' });
-        },
-        ended: () => { if (valid()) void this.stop(); },
-      }, abort.signal);
+        abort.signal,
+      );
       if (previous) void previous.dispose();
       const next = await pending;
-      if (!valid()) { await next.dispose(); return; }
+      if (!valid()) {
+        await next.dispose();
+        return;
+      }
       this.session = next;
       this.publish({ status: this.snapshot.speaking ? 'speaking' : 'listening' });
     } catch (error) {
@@ -89,5 +122,6 @@ export class MicrophoneController {
     if (session) await session.dispose();
   }
   stop = () => this.end('idle');
-  toggleMute = () => this.snapshot.status === 'muted' ? this.open(this.lastSource) : this.end('muted');
+  toggleMute = () =>
+    this.snapshot.status === 'muted' ? this.open(this.lastSource) : this.end('muted');
 }

@@ -42,8 +42,8 @@ test('initial overlap and a joint start after silence never invent an entry orde
 
 test('non-speaking activity cannot establish a predecessor, and direct handoff clears overlap', () => {
   // Thinking or a nonzero level is not an activity edge; only speaking flags enter this model.
-  const thinking = { speaking: false, thinking: true, level: .9 };
-  const quiet = { speaking: false, level: .8 };
+  const thinking = { speaking: false, thinking: true, level: 0.9 };
+  const quiet = { speaking: false, level: 0.8 };
   const before = createOverlapState(quiet.speaking, thinking.speaking);
   assert.equal(advanceOverlapState(before, true, true).entry, 'simultaneous');
   const userOnly = createOverlapState(true, false);

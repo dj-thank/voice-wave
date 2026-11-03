@@ -9,8 +9,11 @@ test('stop during permission/model preparation rejects stale session and callbac
   let signal;
   let disposed = 0;
   const controller = new MicrophoneController((_, cb, abort) => {
-    callbacks = cb; signal = abort;
-    return new Promise(done => { resolve = done; });
+    callbacks = cb;
+    signal = abort;
+    return new Promise((done) => {
+      resolve = done;
+    });
   });
   const pending = controller.start();
   assert.equal(controller.getSnapshot().status, 'loading');
@@ -18,7 +21,11 @@ test('stop during permission/model preparation rejects stale session and callbac
   assert.equal(signal.aborted, true);
   callbacks.speech(true);
   callbacks.frame(1, 1);
-  resolve({ dispose: async () => { disposed++; } });
+  resolve({
+    dispose: async () => {
+      disposed++;
+    },
+  });
   await pending;
   assert.equal(disposed, 1);
   assert.equal(controller.getSnapshot().status, 'idle');
@@ -28,7 +35,15 @@ test('stop during permission/model preparation rejects stale session and callbac
 test('speech callbacks, pause and resume maintain separate input ownership', async () => {
   const sessions = [];
   const controller = new MicrophoneController(async (source, callbacks, signal) => {
-    const session = { source, callbacks, signal, disposed: 0, dispose: async () => { session.disposed++; } };
+    const session = {
+      source,
+      callbacks,
+      signal,
+      disposed: 0,
+      dispose: async () => {
+        session.disposed++;
+      },
+    };
     sessions.push(session);
     return session;
   });
@@ -65,7 +80,7 @@ test('permission error does not claim listening and is recoverable', async () =>
 
 test('sample mode is explicit and muted sample resumes the same source', async () => {
   const sources = [];
-  const controller = new MicrophoneController(async source => {
+  const controller = new MicrophoneController(async (source) => {
     sources.push(source);
     return { dispose: async () => {} };
   });
@@ -83,8 +98,16 @@ test('sample mode is explicit and muted sample resumes the same source', async (
 test('a replaced session cannot update or end the new session', async () => {
   const sessions = [];
   const controller = new MicrophoneController(async (source, callbacks, signal) => {
-    const session = { callbacks, signal, disposed: 0, dispose: async () => { session.disposed++; } };
-    sessions.push(session); return session;
+    const session = {
+      callbacks,
+      signal,
+      disposed: 0,
+      dispose: async () => {
+        session.disposed++;
+      },
+    };
+    sessions.push(session);
+    return session;
   });
   await controller.start();
   await controller.startSample('/samples/test.wav');
@@ -100,23 +123,26 @@ test('a replaced session cannot update or end the new session', async () => {
 test('playback activity follows real energy with a continuous 180ms quiet release', async () => {
   let callbacks;
   let now = 0;
-  const controller = new AgentVoiceController(async (_, cb) => {
-    callbacks = cb;
-    return { dispose: async () => {} };
-  }, () => now);
+  const controller = new AgentVoiceController(
+    async (_, cb) => {
+      callbacks = cb;
+      return { dispose: async () => {} };
+    },
+    () => now,
+  );
   await controller.start('/sample.wav');
-  callbacks.frame(.5, [.5, .5, .5]);
+  callbacks.frame(0.5, [0.5, 0.5, 0.5]);
   assert.equal(controller.getSnapshot().audible, false);
   callbacks.playing();
   assert.equal(controller.getSnapshot().status, 'speaking');
   assert.equal(controller.getSnapshot().audible, false);
-  callbacks.frame(.02, [.02, .02, .02]);
+  callbacks.frame(0.02, [0.02, 0.02, 0.02]);
   assert.equal(controller.getSnapshot().audible, false);
-  callbacks.frame(.025, [.02, .03, .01]);
+  callbacks.frame(0.025, [0.02, 0.03, 0.01]);
   assert.equal(controller.getSnapshot().audible, true);
 
   now = 40;
-  callbacks.frame(.012, [0, 0, 0]);
+  callbacks.frame(0.012, [0, 0, 0]);
   now = 219;
   callbacks.frame(0, [0, 0, 0]);
   assert.equal(controller.getSnapshot().audible, true);
@@ -126,11 +152,11 @@ test('playback activity follows real energy with a continuous 180ms quiet releas
   assert.equal(controller.getSnapshot().status, 'speaking');
 
   now = 300;
-  callbacks.frame(.04, [.04, .03, .02]);
+  callbacks.frame(0.04, [0.04, 0.03, 0.02]);
   now = 350;
   callbacks.frame(0, [0, 0, 0]);
   now = 500;
-  callbacks.frame(.02, [.01, .02, .01]);
+  callbacks.frame(0.02, [0.01, 0.02, 0.01]);
   assert.equal(controller.getSnapshot().audible, true);
   now = 600;
   callbacks.frame(0, [0, 0, 0]);
@@ -141,7 +167,7 @@ test('playback activity follows real energy with a continuous 180ms quiet releas
   callbacks.frame(0, [0, 0, 0]);
   assert.equal(controller.getSnapshot().audible, false);
 
-  callbacks.frame(.8, [.6, .7, .8]);
+  callbacks.frame(0.8, [0.6, 0.7, 0.8]);
   await controller.stop();
   callbacks.playing();
   callbacks.frame(1, [1, 1, 1]);
@@ -153,14 +179,17 @@ test('playback activity follows real energy with a continuous 180ms quiet releas
 test('replacing, ending or failing playback clears audible and rejects stale activity', async () => {
   const sessions = [];
   let shouldFail = false;
-  const controller = new AgentVoiceController(async (_, callbacks) => {
-    sessions.push(callbacks);
-    if (shouldFail) throw new Error('decode failed');
-    return { dispose: async () => {} };
-  }, () => 0);
+  const controller = new AgentVoiceController(
+    async (_, callbacks) => {
+      sessions.push(callbacks);
+      if (shouldFail) throw new Error('decode failed');
+      return { dispose: async () => {} };
+    },
+    () => 0,
+  );
   await controller.start('/first.wav');
   sessions[0].playing();
-  sessions[0].frame(.5, [.5, .5, .5]);
+  sessions[0].frame(0.5, [0.5, 0.5, 0.5]);
   assert.equal(controller.getSnapshot().audible, true);
 
   await controller.start('/second.wav');
@@ -169,14 +198,14 @@ test('replacing, ending or failing playback clears audible and rejects stale act
   assert.equal(controller.getSnapshot().status, 'thinking');
   assert.equal(controller.getSnapshot().audible, false);
   sessions[1].playing();
-  sessions[1].frame(.4, [.4, .4, .4]);
+  sessions[1].frame(0.4, [0.4, 0.4, 0.4]);
   sessions[1].ended();
   assert.equal(controller.getSnapshot().status, 'idle');
   assert.equal(controller.getSnapshot().audible, false);
 
   await controller.start('/third.wav');
   sessions[2].playing();
-  sessions[2].frame(.7, [.7, .7, .7]);
+  sessions[2].frame(0.7, [0.7, 0.7, 0.7]);
   shouldFail = true;
   await controller.start('/broken.wav');
   sessions[2].frame(1, [1, 1, 1]);

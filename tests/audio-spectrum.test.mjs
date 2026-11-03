@@ -4,15 +4,22 @@ import { analyseVoiceFrame, smoothBands } from '../src/audio/spectrum.ts';
 import { AgentVoiceController } from '../src/audio/agentController.ts';
 
 function sine(frequency, rate = 16000) {
-  return Float32Array.from({ length: 1024 }, (_, i) => 0.1 * Math.sin(2 * Math.PI * frequency * i / rate));
+  return Float32Array.from(
+    { length: 1024 },
+    (_, i) => 0.1 * Math.sin((2 * Math.PI * frequency * i) / rate),
+  );
 }
 test('spectral envelopes separate low, middle and high voice-frequency energy', () => {
-  for (const [frequency, expected] of [[300, 0], [1100, 1], [3400, 2]]) {
+  for (const [frequency, expected] of [
+    [300, 0],
+    [1100, 1],
+    [3400, 2],
+  ]) {
     for (const rate of [16000, 48000]) {
       const { bands, level } = analyseVoiceFrame(sine(frequency, rate), rate);
       assert.equal(bands.indexOf(Math.max(...bands)), expected);
       assert.ok(level > 0 && level <= 1);
-      assert.ok(bands.every(value => value >= 0 && value <= 1));
+      assert.ok(bands.every((value) => value >= 0 && value <= 1));
     }
   }
 });
@@ -28,8 +35,11 @@ test('stopping thinking cancels the pending voice and rejects late callbacks', a
   let signal;
   let disposals = 0;
   const controller = new AgentVoiceController((_, cb, abort) => {
-    callbacks = cb; signal = abort;
-    return new Promise(resolve => { complete = resolve; });
+    callbacks = cb;
+    signal = abort;
+    return new Promise((resolve) => {
+      complete = resolve;
+    });
   });
   const start = controller.start('/voice.wav');
   assert.equal(controller.getSnapshot().status, 'thinking');
@@ -37,10 +47,20 @@ test('stopping thinking cancels the pending voice and rejects late callbacks', a
   assert.equal(signal.aborted, true);
   callbacks.playing();
   callbacks.frame(1, [1, 1, 1]);
-  complete({ dispose: async () => { disposals++; } });
+  complete({
+    dispose: async () => {
+      disposals++;
+    },
+  });
   await start;
   assert.equal(disposals, 1);
-  assert.deepEqual(controller.getSnapshot(), { status: 'idle', audible: false, level: 0, bands: [0, 0, 0], error: null });
+  assert.deepEqual(controller.getSnapshot(), {
+    status: 'idle',
+    audible: false,
+    level: 0,
+    bands: [0, 0, 0],
+    error: null,
+  });
 });
 test('sample playback updates envelopes and resets when ended', async () => {
   let callbacks;
@@ -48,7 +68,11 @@ test('sample playback updates envelopes and resets when ended', async () => {
   const controller = new AgentVoiceController(async (_, cb) => {
     callbacks = cb;
     cb.playing();
-    return { dispose: async () => { disposed++; } };
+    return {
+      dispose: async () => {
+        disposed++;
+      },
+    };
   });
   await controller.start('/voice.wav');
   callbacks.frame(0.7, [0.1, 0.7, 0.2]);

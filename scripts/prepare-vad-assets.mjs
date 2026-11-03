@@ -10,8 +10,15 @@ const vadDist = dirname(require.resolve('@ricky0123/vad-web'));
 const ortDist = dirname(require.resolve('onnxruntime-web/wasm'));
 const copied = [];
 for (const [folder, accept] of [
-  [vadDist, name => /^silero_vad_v[56]\.onnx$/.test(name) || name === 'vad.worklet.bundle.min.js'],
-  [ortDist, name => /^ort-wasm.*\.(wasm|mjs)$/.test(name) && !name.includes('jsep') && !name.includes('jspi')],
+  [
+    vadDist,
+    (name) => /^silero_vad_v[56]\.onnx$/.test(name) || name === 'vad.worklet.bundle.min.js',
+  ],
+  [
+    ortDist,
+    (name) =>
+      /^ort-wasm.*\.(wasm|mjs)$/.test(name) && !name.includes('jsep') && !name.includes('jspi'),
+  ],
 ]) {
   for (const name of await readdir(folder)) {
     if (!accept(name)) continue;
@@ -20,7 +27,10 @@ for (const [folder, accept] of [
   }
 }
 // Preserve notices with the local runtime assets; full project attribution is separate.
-for (const [label, base] of [['vad-web', dirname(vadDist)], ['onnxruntime-web', dirname(ortDist)]]) {
+for (const [label, base] of [
+  ['vad-web', dirname(vadDist)],
+  ['onnxruntime-web', dirname(ortDist)],
+]) {
   for (const name of await readdir(base)) {
     if (/^(LICENSE|NOTICE)/i.test(name)) {
       await copyFile(join(base, name), join(destination, `${label}-${name}`));

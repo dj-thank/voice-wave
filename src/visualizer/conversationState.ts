@@ -29,16 +29,20 @@ export function conversationMode(input: VoiceChannel, output: VoiceChannel): Voi
   return channelMode(source === 'user' ? input : output, source);
 }
 
-const unit = (value: number) => Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
+const unit = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
 const combine = (a: number, b: number) => 1 - (1 - unit(a)) * (1 - unit(b));
 
 /** A bounded visual envelope, not a mixed audio waveform. Quiet sources contribute nothing. */
 export function conversationSignal(input: VoiceChannel, output: VoiceChannel): VoiceChannel {
-  if (!input.speaking || !output.speaking) return primarySource(input, output) === 'user' ? input : output;
+  if (!input.speaking || !output.speaking)
+    return primarySource(input, output) === 'user' ? input : output;
   const a = input.bands ?? [input.level, input.level, input.level];
   const b = output.bands ?? [output.level, output.level, output.level];
-  return { speaking: true, level: combine(input.level, output.level),
-    bands: a.map((value, index) => combine(value, b[index])) as [number, number, number] };
+  return {
+    speaking: true,
+    level: combine(input.level, output.level),
+    bands: a.map((value, index) => combine(value, b[index])) as [number, number, number],
+  };
 }
 
 export function layerSources(innerSource: VoiceSource): { inner: VoiceSource; outer: VoiceSource } {

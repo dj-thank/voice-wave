@@ -24,23 +24,36 @@ const playSample: AgentVoiceFactory = async (url, callbacks, signal) => {
     rejectThinking = null;
     if (source) {
       source.onended = null;
-      try { source.stop(); } catch { /* not yet started / already ended */ }
+      try {
+        source.stop();
+      } catch {
+        /* not yet started / already ended */
+      }
       source.disconnect();
     }
     cleanup = context.state === 'closed' ? Promise.resolve() : context.close().catch(() => {});
     return cleanup;
   };
-  function abort() { void dispose(); }
-  const check = () => { if (signal.aborted || disposed) throw new DOMException('Aborted', 'AbortError'); };
+  function abort() {
+    void dispose();
+  }
+  const check = () => {
+    if (signal.aborted || disposed) throw new DOMException('Aborted', 'AbortError');
+  };
   signal.addEventListener('abort', abort, { once: true });
   try {
     check();
     await resume;
     const resolved = new URL(url, location.href);
-    if (resolved.origin !== location.origin) throw new Error('表示:AIサンプル音声はこのデモと同じサイト内のファイルを指定してください。');
+    if (resolved.origin !== location.origin)
+      throw new Error('表示:AIサンプル音声はこのデモと同じサイト内のファイルを指定してください。');
     const thinking = new Promise<void>((resolve, reject) => {
       rejectThinking = reject;
-      thinkingTimer = setTimeout(() => { thinkingTimer = null; rejectThinking = null; resolve(); }, 900);
+      thinkingTimer = setTimeout(() => {
+        thinkingTimer = null;
+        rejectThinking = null;
+        resolve();
+      }, 900);
     });
     // Attach a handler immediately: fetch/decode and the thinking delay run concurrently.
     const audio = (async () => {
@@ -57,7 +70,9 @@ const playSample: AgentVoiceFactory = async (url, callbacks, signal) => {
     source.buffer = buffer;
     source.connect(analyser);
     analyser.connect(context.destination);
-    source.onended = () => { if (!disposed && !signal.aborted) callbacks.ended(); };
+    source.onended = () => {
+      if (!disposed && !signal.aborted) callbacks.ended();
+    };
     let level = 0;
     let bands: AudioBands = [0, 0, 0];
     const frame = new Float32Array(analyser.fftSize);
@@ -67,7 +82,10 @@ const playSample: AgentVoiceFactory = async (url, callbacks, signal) => {
       const features = analyseVoiceFrame(frame, context.sampleRate);
       level += (features.level - level) * (features.level > level ? 0.72 : 0.4);
       bands = smoothBands(bands, features.bands);
-      if (features.level === 0 && level < 0.01) { level = 0; bands = [0, 0, 0]; }
+      if (features.level === 0 && level < 0.01) {
+        level = 0;
+        bands = [0, 0, 0];
+      }
       callbacks.frame(level, bands);
       frameId = requestAnimationFrame(tick);
     };
@@ -83,7 +101,16 @@ const playSample: AgentVoiceFactory = async (url, callbacks, signal) => {
 
 export function useAgentVoice() {
   const controller = useMemo(() => new AgentVoiceController(playSample), []);
-  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
-  useEffect(() => () => { void controller.stop(); }, [controller]);
+  const state = useSyncExternalStore(
+    controller.subscribe,
+    controller.getSnapshot,
+    controller.getSnapshot,
+  );
+  useEffect(
+    () => () => {
+      void controller.stop();
+    },
+    [controller],
+  );
   return { ...state, start: controller.start, stop: controller.stop };
 }

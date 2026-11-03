@@ -9,7 +9,11 @@ export interface OverlapState {
 
 /** An initially overlapping pair has no observed predecessor. */
 export function createOverlapState(inputSpeaking = false, outputSpeaking = false): OverlapState {
-  return { inputSpeaking, outputSpeaking, entry: inputSpeaking && outputSpeaking ? 'simultaneous' : null };
+  return {
+    inputSpeaking,
+    outputSpeaking,
+    entry: inputSpeaking && outputSpeaking ? 'simultaneous' : null,
+  };
 }
 
 /**
@@ -17,14 +21,22 @@ export function createOverlapState(inputSpeaking = false, outputSpeaking = false
  * activity flags only, not volume, thinking, speaker identity or interruption intent.
  * If both flags first appear in one update, their finer timing is unknown.
  */
-export function advanceOverlapState(previous: OverlapState, inputSpeaking: boolean, outputSpeaking: boolean): OverlapState {
-  if (previous.inputSpeaking === inputSpeaking && previous.outputSpeaking === outputSpeaking) return previous;
+export function advanceOverlapState(
+  previous: OverlapState,
+  inputSpeaking: boolean,
+  outputSpeaking: boolean,
+): OverlapState {
+  if (previous.inputSpeaking === inputSpeaking && previous.outputSpeaking === outputSpeaking)
+    return previous;
 
   let entry: OverlapEntry | null = null;
   if (inputSpeaking && outputSpeaking) {
-    entry = previous.inputSpeaking && !previous.outputSpeaking ? 'agent'
-      : previous.outputSpeaking && !previous.inputSpeaking ? 'user'
-      : 'simultaneous';
+    entry =
+      previous.inputSpeaking && !previous.outputSpeaking
+        ? 'agent'
+        : previous.outputSpeaking && !previous.inputSpeaking
+          ? 'user'
+          : 'simultaneous';
   }
   return { inputSpeaking, outputSpeaking, entry };
 }
