@@ -75,6 +75,13 @@ The redistributable-fixture run detected all five speech conditions; the three 5
 - Browser checks observed both complete sequences with the correct entry attribute, then the entrant alone and waiting. A manual switch to thinking canceled a running sequence and remained thinking after all prior timers would have fired. No console warnings/errors were observed. Desktop 1280 × 720 and narrow 320 × 844 layouts were exercised; the narrow page had no horizontal overflow and both sequence buttons were 44 px tall. These are browser checks, not mobile hardware acceptance.
 - The focused review caught the short-overlap exit jump, and confirmed its correction. Real microphone, acoustic interruption/echo behavior and precise audiovisual timing remain outside this acceptance pass.
 
+## Minimal copy and authored video — 2026-11-03
+
+- Removed explanatory paragraphs, repeated state descriptions and visual disclaimers from the playground. Short control labels, error messages, screen-reader states and collapsed diagnostics remain. Preview states and order sequences keep their behavior.
+- Produced a local Irodori-TTS two-voice film with separate input/output stems and eight independently checked utterances. The film is an authored dialogue, not a live AI conversation. See `DEMO_VIDEO.md` for generation, analysis, capture and encoded-file verification.
+- Added an optional synchronous `onRenderFrame` callback for recording the original WebGL Wave. Without the callback, the playground's rendering and audio path are unchanged. TypeScript/production build, 28 tests and the independent package consumer passed.
+- The final minimal-copy MP4 is 39.833 seconds, 1920 × 1080 at 30 fps, H.264/AAC. All 1,195 encoded frames contain the Wave; 45 frames contain sustained red/blue overlap. Encoded audio correlation to the mixed source stems is .974 after accounting for capture preroll. Local browser checks confirmed the shortened controls, working thinking preview and common stop, with no horizontal overflow at 1280 px.
+
 ## Remaining boundaries
 
 - No ASR, live LLM conversation, cloud TTS, phoneme alignment or speaker identification. Agent speech is a labelled bundled sample.

@@ -142,32 +142,25 @@ function App() {
     : mic.status === 'muted' ? 'ミュート中'
     : mic.status === 'listening' ? (sample ? 'サンプルの無音を検出' : 'あなたの声を待っています')
     : mic.status === 'error' ? 'マイクを確認してください' : 'マイクはオフです';
-  const stageBadge = preview ? '模擬プレビュー' : overlapping ? '同時発話' : sample ? 'サンプル解析' : loading ? '準備中' : mic.status === 'muted' ? 'ミュート' : running ? 'マイク接続中' : agentActive ? 'サンプル再生' : 'READY';
+  const stageBadge = preview ? 'プレビュー' : overlapping ? '同時発話' : sample ? 'サンプル解析' : loading ? '準備中' : mic.status === 'muted' ? 'ミュート' : running ? 'マイク接続中' : agentActive ? 'サンプル再生' : 'READY';
   const sequenceStep = previewSequence?.phase === 'first' ? (previewSequence.entry === 'user' ? 'エージェントだけ（青）' : 'あなただけ（赤）')
     : previewSequence?.phase === 'overlap' ? (previewSequence.entry === 'user' ? '赤が青に入り、同時発話' : '青が赤に入り、同時発話')
     : previewSequence?.phase === 'last' ? (previewSequence.entry === 'user' ? 'あなただけ（赤）' : 'エージェントだけ（青）')
     : '待機に戻りました';
-  const dockNote = preview ? (previewSequence ? `${sequenceStep}。音声を使わない模擬再生です。` : overlapping ? `${overlapDescription}（模擬）。音声は使いません。` : '状態を選んで動きを確認できます。音声は使いません。')
-    : loading ? (sample ? '音声判定を準備しています。初回は少し時間がかかります。' : 'ブラウザのマイク許可を確認してください。初回は準備に時間がかかります。')
-    : overlapping ? `${overlapDescription}${sample ? '（サンプル）' : ''}。`
-    : sample ? '日本語サンプルを解析しています。マイクは使用していません。'
-    : mic.status === 'muted' ? 'マイクはミュート中です。再開すると新しく接続します。'
-    : running ? '話すと赤く、黙ると緑へ。声の強さや響きに反応します。'
-    : agentActive ? 'エージェントのサンプル音声です。実際のAI会話ではありません。'
-    : 'マイクを開始して、ひと声どうぞ。';
+
 
   return <div className="app" data-mode={mode}>
     <header className="app-header">
-      <a href={import.meta.env.BASE_URL} className="brand" aria-label="Voice Wave ホーム"><span className="brand-icon"><Icon type="wave" size={20}/></span><span>Voice Wave</span><span className="brand-version">0.3</span></a>
+      <a href={import.meta.env.BASE_URL} className="brand" aria-label="Voice Wave ホーム"><span className="brand-icon"><Icon type="wave" size={20}/></span><span>Voice Wave</span><span className="brand-version">0.3.1</span></a>
       <nav className="header-nav" aria-label="メインナビゲーション"><span className="nav-current">Playground</span><a href="https://github.com/dj-thank/voice-wave/blob/main/README.ja.md" target="_blank" rel="noreferrer">ガイド<Icon type="external" size={13}/></a><a href="https://github.com/dj-thank/voice-wave" target="_blank" rel="noreferrer">GitHub<Icon type="external" size={13}/></a></nav>
     </header>
 
     <main className="page">
-      <div className="page-heading"><div><div className="breadcrumb">PLAYGROUND <span>/</span> AUDIO VISUALIZER</div><h1>声を、かたちに。</h1><p>話す、聴く。その瞬間を、ひとつのWaveに。</p></div><div className="privacy-note"><Icon type="lock" size={14}/><span>音声はブラウザ内で処理<br/><strong>録音・アップロードなし</strong></span></div></div>
+      <div className="page-heading"><h1>声を、かたちに。</h1></div>
 
       <div className="workspace">
         <section className="preview-panel" aria-label="音声に反応するWaveデモ">
-          <div className="preview-toolbar"><div className="mode-switch" role="group" aria-label="操作モード"><button aria-pressed={!preview} onClick={() => selectPreview(false)}><Icon type="mic" size={15}/>音声入力</button><button aria-pressed={preview} onClick={() => selectPreview(true)}><Icon type="play" size={15}/>見た目をプレビュー</button></div><span className={`session-badge ${anythingActive ? 'is-active' : ''}`}><i/>{stageBadge}</span></div>
+          <div className="preview-toolbar"><div className="mode-switch" role="group" aria-label="操作モード"><button aria-pressed={!preview} onClick={() => selectPreview(false)}><Icon type="mic" size={15}/>音声入力</button><button aria-label="見た目をプレビュー" aria-pressed={preview} onClick={() => selectPreview(true)}><Icon type="play" size={15}/>プレビュー</button></div><span className={`session-badge ${anythingActive ? 'is-active' : ''}`}><i/>{stageBadge}</span></div>
           <div ref={stageRef} className={`stage-view ${preview ? 'has-preview' : ''}`}>
             <div className="orb-wrap"><VoiceConversation input={{level:preview ? (talking ? previewLevel : 0) : mic.level,speaking:talking,bands:preview ? previewBands : mic.bands}} output={{level:preview ? (agentTalking ? previewAgentLevel : 0) : agentVoice.level,speaking:agentTalking,thinking,bands:preview ? previewAgentBands : agentVoice.bands}} layout="wave" idleMotion={idleMotion} renderer={simpleRenderer ? 'fallback' : 'auto'} reducedMotion={reduceMotion} onError={setRendererError}/></div>
             <span className="sr-only" role="status" aria-live="polite">{status}</span>
@@ -180,43 +173,40 @@ function App() {
                 : <button className={`mic-button ${mic.status === 'muted' ? 'is-muted' : 'is-connected'}`} disabled={loading || sample} onClick={() => void mic.toggleMute()}><Icon type={mic.status === 'muted' ? 'mic' : 'mute'}/>{loading ? '準備中' : sample ? 'サンプル解析中' : mic.status === 'muted' ? '再開' : 'ミュート'}</button>}
               <button className="end-button" disabled={!anythingActive} onClick={stop} aria-label={loading ? 'キャンセル' : 'すべて停止'} title={loading ? '準備をキャンセル' : 'すべての入力・再生を停止'}><Icon type="stop" size={15}/><span>{loading ? 'キャンセル' : '終了'}</span></button>
             </div>
-            <p className="dock-note">{dockNote}</p>
           </div>
           {(mic.error || agentVoice.error || rendererError) && <div className="notice-area">{mic.error && <p className="error-notice" role="alert">{mic.error}</p>}{agentVoice.error && <p className="error-notice" role="alert">{agentVoice.error}</p>}{rendererError && <p className="fallback-notice" role="alert">シンプルな表示に切り替えています。{rendererError}</p>}</div>}
         </section>
 
         <aside className="inspector" aria-label="サンプルと表示設定">
           {preview && <section className="inspector-section sequence-section" aria-label="発話の順番プレビュー">
-            <div className="section-heading"><h2>重なる順番を試す</h2><span>PREVIEW</span></div>
-            <p className="section-description">声が入る順番を、約6秒の模擬再生で。</p>
+            <div className="section-heading"><h2>発話の順番</h2></div>
             <div className="sequence-actions">
               <button aria-label="青から赤が入る流れを再生" data-active={previewSequence?.entry === 'user' && previewSequence.phase !== 'complete'} onClick={() => startSequence('user')}><span className="sequence-dot agent"/>青に<span className="sequence-dot user"/>赤が入る<Icon type="play" size={12}/></button>
               <button aria-label="赤から青が入る流れを再生" data-active={previewSequence?.entry === 'agent' && previewSequence.phase !== 'complete'} onClick={() => startSequence('agent')}><span className="sequence-dot user"/>赤に<span className="sequence-dot agent"/>青が入る<Icon type="play" size={12}/></button>
             </div>
-            <p className="sequence-progress">{previewSequence ? <><span className="sequence-trail">{previewSequence.entry === 'user' ? '青 → 赤＋青 → 赤 → 待機' : '赤 → 赤＋青 → 青 → 待機'}</span><span>{sequenceStep}</span></> : <span>実際の音声は再生しません。</span>}</p>
+            <span className="sr-only" role="status">{previewSequence ? sequenceStep : ""}</span>
           </section>}
-          <section className="inspector-section sample-section"><div className="section-heading"><h2>声を試す</h2><span>DEMO</span></div><p className="section-description">マイクがなくても、音声への反応を。</p>
+          <section className="inspector-section sample-section"><div className="section-heading"><h2>サンプル</h2></div>
             <div className="sample-actions">
-              <button className="sample-action" aria-label="日本語サンプルで試す" disabled={loading || sample} data-active={sample} onClick={startSample}><span className="action-icon"><Icon type="wave"/></span><span className="action-copy"><strong>{sample ? 'サンプルを解析中' : 'あなたの声'}</strong><small>日本語の発話を検出</small></span><span className="sound-label">無音</span><Icon type="play" size={14}/></button>
-              <button className="sample-action" aria-label={agentActive ? 'エージェント音声を止める' : 'エージェント音声を試す'} data-active={agentActive} onClick={toggleAgent}><span className="action-icon"><Icon type="headphones"/></span><span className="action-copy"><strong>{agentActive ? 'エージェントを停止' : 'エージェントの声'}</strong><small>{thinking && !preview ? '応答を準備中' : '音声と動きを合わせる'}</small></span><span className="sound-label">音あり</span><Icon type={agentActive ? 'stop' : 'play'} size={14}/></button>
-              <button className="sample-action" aria-label="二人の声を同時に試す" disabled={running || agentActive} onClick={startBothSamples}><span className="action-icon"><Icon type="layers"/></span><span className="action-copy"><strong>二人の声を同時に</strong><small>入力と出力を同時に</small></span><span className="sound-label">音あり</span><Icon type="play" size={14}/></button>
+              <button className="sample-action" aria-label="日本語サンプルで試す" disabled={loading || sample} data-active={sample} onClick={startSample}><span className="action-icon"><Icon type="wave"/></span><span className="action-copy"><strong>{sample ? 'サンプルを解析中' : 'あなたの声'}</strong></span><span className="sound-label">無音</span><Icon type="play" size={14}/></button>
+              <button className="sample-action" aria-label={agentActive ? 'エージェント音声を止める' : 'エージェント音声を試す'} data-active={agentActive} onClick={toggleAgent}><span className="action-icon"><Icon type="headphones"/></span><span className="action-copy"><strong>{agentActive ? 'エージェントを停止' : 'エージェントの声'}</strong></span><span className="sound-label">音あり</span><Icon type={agentActive ? 'stop' : 'play'} size={14}/></button>
+              <button className="sample-action" aria-label="二人の声を同時に試す" disabled={running || agentActive} onClick={startBothSamples}><span className="action-icon"><Icon type="layers"/></span><span className="action-copy"><strong>二人の声を同時に</strong></span><span className="sound-label">音あり</span><Icon type="play" size={14}/></button>
             </div>
             {sampleFinished && <p className="sample-feedback" role="status"><span>✓</span>{observations.speech ? '発話を検出' : '発話未検出'}{observations.silence ? ' → 無音に復帰' : ''}</p>}
           </section>
 
-          <section className="inspector-section appearance-section"><div className="section-heading"><h2>表示設定</h2><span>APPEARANCE</span></div>
+          <section className="inspector-section appearance-section"><div className="section-heading"><h2>表示</h2></div>
             <label className="switch-row"><span>待機中も動かす</span><input type="checkbox" checked={idleMotion} onChange={e => setIdleMotion(e.target.checked)}/><span className="switch-track" aria-hidden="true"/></label>
-            <p className="setting-hint">{reduceMotion ? '「動きを控えめに」がオンの間は、待機も静止します。' : '待機中だけ切り替えます。発話や思考の動きはそのまま。'}</p>
+
             <label className="switch-row"><span>動きを控えめに</span><input type="checkbox" checked={reduceMotion} onChange={e => setReduceMotion(e.target.checked)}/><span className="switch-track" aria-hidden="true"/></label>
           </section>
 
-          <details className="advanced-settings"><summary><span>詳細設定</span><Icon type="chevron" size={16}/></summary><div className="advanced-body"><label className="select-row"><span>音声検出モデル</span><select aria-label="音声検出モデル" value={vadModel} disabled={running} onChange={e => {setVadModel(e.target.value as 'v5'|'v6'); resetSample();}}><option value="v6">Silero v6</option><option value="v5">Silero v5</option></select></label><p>入力を停止すると切り替えられます。精度の優劣を示すものではありません。</p><label className="switch-row"><span>シンプルな描画</span><input aria-label="シンプルな描画を使う" type="checkbox" checked={simpleRenderer} onChange={e => setSimpleRenderer(e.target.checked)}/><span className="switch-track" aria-hidden="true"/></label><p>描画が重い環境では、軽い表示へ切り替えられます。</p></div></details>
-          <p className="demo-disclaimer">サンプルは表示を試すための音声です。<br/>AI会話サービスには接続していません。</p>
+          <details className="advanced-settings"><summary><span>詳細設定</span><Icon type="chevron" size={16}/></summary><div className="advanced-body"><label className="select-row"><span>音声検出モデル</span><select aria-label="音声検出モデル" value={vadModel} disabled={running} onChange={e => {setVadModel(e.target.value as 'v5'|'v6'); resetSample();}}><option value="v6">Silero v6</option><option value="v5">Silero v5</option></select></label><label className="switch-row"><span>シンプルな描画</span><input aria-label="シンプルな描画を使う" type="checkbox" checked={simpleRenderer} onChange={e => setSimpleRenderer(e.target.checked)}/><span className="switch-track" aria-hidden="true"/></label></div></details>
         </aside>
       </div>
 
       <Diagnostics snapshot={{mode,overlapEntry,model:vadModel,micStatus:mic.status,source:preview?'preview':mic.source,inputLevel:mic.level,probability:mic.probability,inputBands:mic.bands,agentStatus:agentVoice.status,outputLevel:agentVoice.level,outputBands:agentVoice.bands}} status={status} sampleResult={sampleFinished ? `サンプル確認：${observations.speech?'発話を検出':'発話未検出'}${observations.silence?' → 無音に復帰':''}` : null}/>
-      <footer className="page-footer"><span>Built for voice. Open to everyone.</span><div><a href="https://ui.pipecat.ai/docs/visualizers/audio-visualizer-wave" target="_blank" rel="noreferrer">Pipecat Wave<Icon type="external" size={12}/></a><a href="https://github.com/dj-thank/voice-wave/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noreferrer">Licenses<Icon type="external" size={12}/></a></div></footer>
+      <footer className="page-footer"><div><a href="https://ui.pipecat.ai/docs/visualizers/audio-visualizer-wave" target="_blank" rel="noreferrer">Pipecat Wave<Icon type="external" size={12}/></a><a href="https://github.com/dj-thank/voice-wave/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noreferrer">Licenses<Icon type="external" size={12}/></a></div></footer>
     </main>
   </div>;
 }

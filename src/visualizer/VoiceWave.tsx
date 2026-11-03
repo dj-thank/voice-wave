@@ -25,6 +25,8 @@ export interface VoiceWaveProps {
   style?: CSSProperties;
   /** Receives null after successful preparation or context recovery. */
   onError?: (message: string | null) => void;
+  /** Synchronous WebGL frame handoff for canvas/video composition, before the buffer is cleared. */
+  onRenderFrame?: (canvas: HTMLCanvasElement) => void;
 }
 type RGB = [number, number, number];
 const WAITING_COLOR: RGB = [0.16, 0.72, 0.46];
@@ -56,14 +58,14 @@ uniform vec3 uColor, uColorHsv, uHsvDelta, uHighlightColor, uUserColor, uAgentCo
 const VERTEX = 'attribute vec2 aPosition; void main() { gl_Position = vec4(aPosition, 0.0, 1.0); }';
 const MAIN = '\nvoid main() { vec4 c = vec4(0.0); mainImage(c, gl_FragCoord.xy); gl_FragColor = c; }';
 
-export function VoiceWave({ level, active, mode, bands, overlapEntry = 'simultaneous', reducedMotion = false, idleMotion = true, renderer = 'auto', className, style, onError }: VoiceWaveProps) {
+export function VoiceWave({ level, active, mode, bands, overlapEntry = 'simultaneous', reducedMotion = false, idleMotion = true, renderer = 'auto', className, style, onError, onRenderFrame }: VoiceWaveProps) {
   const resolvedMode = mode ?? (active ? 'user' : 'waiting');
   const signalActive = active ?? (resolvedMode === 'user' || resolvedMode === 'agent' || resolvedMode === 'overlap');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fallbackRef = useRef<HTMLDivElement>(null);
   const fallbackOverlapRef = useRef<HTMLDivElement>(null);
-  const props = useRef({ level, mode: resolvedMode, active: signalActive, bands, overlapEntry, reducedMotion, idleMotion, onError });
-  props.current = { level, mode: resolvedMode, active: signalActive, bands, overlapEntry, reducedMotion, idleMotion, onError };
+  const props = useRef({ level, mode: resolvedMode, active: signalActive, bands, overlapEntry, reducedMotion, idleMotion, onError, onRenderFrame });
+  props.current = { level, mode: resolvedMode, active: signalActive, bands, overlapEntry, reducedMotion, idleMotion, onError, onRenderFrame };
   const drawRef = useRef<(() => void) | null>(null);
   const [failed, setFailed] = useState(false);
   const [contextGeneration, setContextGeneration] = useState(0);
@@ -233,6 +235,7 @@ export function VoiceWave({ level, active, mode, bands, overlapEntry = 'simultan
       vector('uHighlightColor', palette);
       graphics.clear(graphics.COLOR_BUFFER_BIT);
       graphics.drawArrays(graphics.TRIANGLE_STRIP, 0, 4);
+      props.current.onRenderFrame?.(canvas);
       const colorPending = Math.max(...palette.map((v, i) => Math.abs(v - baseTarget[i])), ...accentPalette.map((v, i) => Math.abs(v - accentTarget[i]))) > 0.001;
       const settling = colorPending || Math.abs(speechBlend - (speaking ? 1 : 0)) > 0.001
         || Math.abs(overlapBlend - (overlap ? 1 : 0)) > 0.001 || Math.abs(thinkingBlend - (thinking ? 1 : 0)) > 0.001

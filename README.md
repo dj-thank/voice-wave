@@ -2,7 +2,7 @@
 
 **Speak in red. Settle into green.** An audio-reactive React UI built from Pipecat Wave, with a browser-local microphone demo focused on a single Wave.
 
-[Interactive demo](https://dj-thank.github.io/voice-wave/) · [日本語](README.ja.md) · [Release](https://github.com/dj-thank/voice-wave/releases/tag/v0.3.0) · [Verification status](docs/STATUS.md)
+[Interactive demo](https://dj-thank.github.io/voice-wave/) · [日本語](README.ja.md) · [Release](https://github.com/dj-thank/voice-wave/releases/tag/v0.3.1) · [Verification status](docs/STATUS.md)
 
 A gently moving, rounder mint-green Wave becomes recording-red for your voice and blue/cyan for agent audio. Thinking pulses in the agent color over a three-second cycle. When a second voice joins, its color enters the same fluid shape: red enters blue from the left, or blue enters red from the right. There are no inner/outer layers. Motion follows measured audio energy and low/mid/high bands. It does **not** recognize phonemes or words.
 
@@ -30,10 +30,10 @@ The agent sample is a UI demonstration, not a live AI conversation. Use headphon
 
 ## Use the React component
 
-Version 0.3.0 is distributed as a GitHub Release tarball; it is not published to the npm registry.
+Version 0.3.1 is distributed as a GitHub Release tarball; it is not published to the npm registry.
 
 ```sh
-npm install https://github.com/dj-thank/voice-wave/releases/download/v0.3.0/dj-thank-voice-wave-0.3.0.tgz
+npm install https://github.com/dj-thank/voice-wave/releases/download/v0.3.1/dj-thank-voice-wave-0.3.1.tgz
 ```
 
 ```tsx

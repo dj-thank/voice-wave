@@ -2,7 +2,7 @@
 
 This independent Vite app imports the **packed library**. It does not import repository source, microphone/VAD code, or the demo styles. Inputs are manual and clearly labelled.
 
-Requires Node.js 24. From this directory, after the v0.3.0 GitHub release is available:
+Requires Node.js 24. From this directory, after the v0.3.1 GitHub release is available:
 
 ```sh
 npm install
@@ -17,7 +17,7 @@ To test a local checkout before release, run these from the repository root:
 npm ci
 npm pack
 cd examples/minimal-react
-npm install ../../dj-thank-voice-wave-0.3.0.tgz
+npm install ../../dj-thank-voice-wave-0.3.1.tgz
 npm run build
 npm run dev
 ```

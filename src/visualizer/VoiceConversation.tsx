@@ -22,10 +22,12 @@ export interface VoiceConversationProps {
   className?: string;
   style?: CSSProperties;
   onError?: (message: string | null) => void;
+  /** Called synchronously after the Wave WebGL draw, for recording/composition. */
+  onRenderFrame?: (canvas: HTMLCanvasElement) => void;
 }
 
 /** Pure presentation: does not acquire microphones, start audio, or create a network connection. */
-export function VoiceConversation({ input, output, layout = 'wave', innerSource = 'user', reducedMotion = false, idleMotion = true, renderer = 'auto', className, style, onError }: VoiceConversationProps) {
+export function VoiceConversation({ input, output, layout = 'wave', innerSource = 'user', reducedMotion = false, idleMotion = true, renderer = 'auto', className, style, onError, onRenderFrame }: VoiceConversationProps) {
   const channels = { user: input, agent: output };
   const sources = layerSources(innerSource);
   const waveSource = layout === 'wave' ? primarySource(input, output) : layout === 'wave-inside' ? sources.inner : sources.outer;
@@ -43,7 +45,7 @@ export function VoiceConversation({ input, output, layout = 'wave', innerSource 
     style={{ width: '100%', height: '100%', position: 'relative', ...style }}>
     <div style={{ position: 'absolute', inset: 0 }}>
       <VoiceWave level={wave.level} bands={wave.bands} mode={mode} active={wave.speaking}
-        overlapEntry={overlapEntry ?? 'simultaneous'} reducedMotion={reducedMotion} idleMotion={idleMotion} renderer={renderer} onError={onError} />
+        overlapEntry={overlapEntry ?? 'simultaneous'} reducedMotion={reducedMotion} idleMotion={idleMotion} renderer={renderer} onError={onError} onRenderFrame={onRenderFrame} />
     </div>
     {layout !== 'wave' && <LiveKitRadial channel={radial} mode={mode}
       inner={layout === 'wave-outside'} reducedMotion={reducedMotion} />}

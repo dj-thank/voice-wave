@@ -24,7 +24,6 @@ export function Diagnostics({ snapshot, status, sampleResult }: { snapshot: Diag
   return <details className="diagnostics">
     <summary><span>診断・ログ</span><span className="diagnostic-summary-note">{recording ? '記録中' : '停止中'} · {count}件</span></summary>
     <div className="diagnostic-body">
-      <p className="diagnostic-description">状態・入力レベル・発話確率をブラウザ内に記録します。音声そのものは記録しません。最新900件を保持し、再読み込みで消去します。</p>
       <div className="diagnostic-toolbar"><label><input type="checkbox" checked={recording} onChange={e => setRecording(e.target.checked)}/>ログを記録</label><button onClick={download} disabled={!count}>JSONを保存</button><button onClick={() => {log.current!.clear(performance.now()); setCount(0); setSaved(false);}}>クリア</button>{saved && <span role="status">保存しました</span>}</div>
       <div className="diagnostic-grid"><div><span>状態</span><strong>{status}</strong></div><div><span>入力レベル</span><strong>{Math.round(snapshot.inputLevel*100)}%</strong></div><div><span>発話確率</span><strong>{Math.round(snapshot.probability*100)}%</strong></div><div><span>出力レベル</span><strong>{Math.round(snapshot.outputLevel*100)}%</strong></div><div><span>検出器</span><strong>Silero {snapshot.model}</strong></div><div><span>音声ソース</span><strong>{snapshot.source ?? 'なし'}</strong></div></div>
       {sampleResult && <p className="sample-result">{sampleResult}</p>}
